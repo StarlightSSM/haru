@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' 'unsafe-inline'">
+  <title>HARU mini</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; font-family: "Malgun Gothic", "Segoe UI", sans-serif; }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+    canvas.drag { cursor: grabbing; }
+  </style>
+</head>
+<body>
+  <canvas id="cv"></canvas>
+  <script src="js/util.js"></script>
+  <script src="js/character.js"></script>
+  <script src="js/mini.js"></script>
+</body>
+</html>

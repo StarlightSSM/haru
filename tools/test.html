@@ -1,0 +1,97 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script src="../node_modules/lamejs/lame.min.js"></script>
+<script src="../node_modules/mp4-muxer/build/mp4-muxer.js"></script>
+<script src="../src/js/util.js"></script>
+<script src="../src/js/genres.js"></script>
+<script src="../src/js/world.js"></script>
+<script src="../src/js/composer.js"></script>
+<script src="../src/js/synth.js"></script>
+<script src="../src/js/character.js"></script>
+<script src="../src/js/room.js"></script>
+<script src="../src/js/painter.js"></script>
+<script src="../src/js/viz.js"></script>
+<script src="../src/js/recorder.js"></script>
+<script>
+  const log = (...a) => console.log('[test]', ...a);
+  window.scale = async () => {
+    const res = {};
+    for (const inst of ['bell', 'pluck', 'pad']) for (const [T, N] of [[32, 120], [128, 480]]) {
+      const ctx = new OfflineAudioContext(2, 44100 * T, 44100);
+      const out = ctx.createGain(); out.connect(ctx.destination);
+      const V = H.makeVoices(ctx);
+      for (let i = 0; i < N; i++) V.play(inst, (i / N) * (T - 3), 60 + (i % 12), 0.5, 0.5, out);
+      const t = performance.now(); await ctx.startRendering(); res[`${inst}_${T}`] = Math.round(performance.now() - t);
+    }
+    return res;
+  };
+  window.micro = async () => {
+    const res = {};
+    const run = async (name, mk) => {
+      const ctx = new OfflineAudioContext(2, 44100 * 32, 44100);
+      const out = ctx.createGain(); out.connect(ctx.destination);
+      for (let i = 0; i < 300; i++) mk(ctx, out, i * 0.1, 220 + (i % 12) * 20);
+      const t = performance.now(); await ctx.startRendering(); res[name] = Math.round(performance.now() - t);
+    };
+    await run('osc_linear', (c, o, t, f) => { const x = c.createOscillator(); x.frequency.value = f; const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.linearRampToValueAtTime(0, t + 1.5); x.connect(g); g.connect(o); x.start(t); x.stop(t + 1.6); });
+    await run('osc_target', (c, o, t, f) => { const x = c.createOscillator(); x.frequency.value = f; const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.setTargetAtTime(0.05, t + 0.01, 0.2); g.gain.setTargetAtTime(0.0001, t + 1, 0.1); g.gain.setValueAtTime(0, t + 1.6); x.connect(g); g.connect(o); x.start(t); x.stop(t + 1.6); });
+    await run('osc_setfreq', (c, o, t, f) => { const x = c.createOscillator(); x.frequency.setValueAtTime(f, t); const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.linearRampToValueAtTime(0, t + 1.5); x.connect(g); g.connect(o); x.start(t); x.stop(t + 1.6); });
+    await run('osc_startnoarg', (c, o, t, f) => { const x = c.createOscillator(); x.frequency.value = f; const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.linearRampToValueAtTime(0, t + 1.5); x.connect(g); g.connect(o); x.start(); x.stop(t + 1.6); });
+    await run('fm', (c, o, t, f) => { const x = c.createOscillator(); x.frequency.value = f; const m = c.createOscillator(); m.frequency.value = f * 3; const mg = c.createGain(); mg.gain.value = f; m.connect(mg); mg.connect(x.frequency); const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.linearRampToValueAtTime(0, t + 1.5); x.connect(g); g.connect(o); x.start(t); m.start(t); x.stop(t + 1.6); m.stop(t + 1.6); });
+    await run('biquad', (c, o, t, f) => { const x = c.createOscillator(); x.type = 'sawtooth'; x.frequency.value = f; const b = c.createBiquadFilter(); b.frequency.value = f * 4; const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.linearRampToValueAtTime(0, t + 1.5); x.connect(b); b.connect(g); g.connect(o); x.start(t); x.stop(t + 1.6); });
+    return res;
+  };
+  window.profile = async () => {
+    const res = {};
+    const song = H.compose({ seed: 1234, genreId: 'lofi', mood: { valence: 0.1, arousal: 0.5, tension: 0.2 }, keywords: ['a'], seconds: 30 });
+    const variants = {
+      empty: (s) => { s.notes = []; s.drums = []; },
+      drumsOnly: (s) => { s.notes = []; },
+      notesOnly: (s) => { s.drums = []; },
+      full: () => {},
+    };
+    for (const [k, fn] of Object.entries(variants)) {
+      const s = Object.assign({}, song, { notes: song.notes.slice(), drums: song.drums.slice() });
+      fn(s); H.indexSong(s);
+      const t = performance.now(); await H.renderSong(s); res[k] = Math.round(performance.now() - t);
+    }
+    res.dur = H.songDuration(song);
+    for (const inst of ['epiano', 'pad', 'bass', 'piano', 'bell']) {
+      const s = Object.assign({}, song, { drums: [], notes: song.notes.filter((n) => n.t === 'lead').slice(0, 60).map((n) => Object.assign({}, n, { t: 'lead' })), insts: { lead: inst, chord: inst, pad: inst, bass: inst } });
+      H.indexSong(s);
+      const t = performance.now(); await H.renderSong(s); res['i_' + inst] = Math.round(performance.now() - t);
+    }
+    return res;
+  };
+  window.runTest = async (genreId) => {
+    const out = {};
+    let t = performance.now();
+    const song = H.compose({ seed: 1234, genreId, mood: { valence: 0.1, arousal: 0.5, tension: 0.2 }, keywords: ['금리', '첫눈', 'AI'], seconds: 75 });
+    out.compose = Math.round(performance.now() - t); out.notes = song.notes.length; out.drums = song.drums.length; out.bars = song.bars; out.dur = H.songDuration(song);
+    t = performance.now();
+    const buf = await H.renderSong(song);
+    out.render = Math.round(performance.now() - t);
+    let peak = 0; const d = buf.getChannelData(0); for (let i = 0; i < d.length; i += 100) peak = Math.max(peak, Math.abs(d[i]));
+    out.peak = peak.toFixed(3);
+    t = performance.now();
+    const mp3 = await H.encodeMp3(buf, 192);
+    out.mp3ms = Math.round(performance.now() - t); out.mp3kb = Math.round(mp3.length / 1024);
+    out.media = await H.probeMedia();
+    t = performance.now();
+    const tl = new H.Timelapse();
+    const ok = await tl.start({ width: 1280, height: 720, fps: 30, withAudio: true });
+    out.tlStart = ok;
+    if (ok) {
+      const c = document.getElementById('c'), ctx = c.getContext('2d');
+      for (let i = 0; i < 90; i++) { ctx.fillStyle = `hsl(${i * 4},60%,60%)`; ctx.fillRect(0, 0, 1280, 720); ctx.fillStyle = '#000'; ctx.font = '80px sans-serif'; ctx.fillText('frame ' + i, 100, 300); while (!tl.addFrame(c)) await H.sleep(5); }
+      await tl.hold(c, 10);
+      const mp4 = await tl.finish(buf);
+      out.mp4kb = mp4 ? Math.round(mp4.length / 1024) : 0; out.mp4ms = Math.round(performance.now() - t);
+      window.mp4 = mp4;
+    }
+    window.mp3 = mp3;
+    return out;
+  };
+</script>
+</body></html>

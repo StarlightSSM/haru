@@ -1,0 +1,15 @@
+{
+  "appId": "com.sumin.haru",
+  "appName": "HARU",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#eceeec"
+  },
+  "ios": {
+    "backgroundColor": "#eceeec",
+    "contentInset": "never"
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": false }
+  }
+}

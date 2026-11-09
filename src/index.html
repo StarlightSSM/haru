@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' 'unsafe-inline' file:; img-src 'self' file: data: blob:; media-src 'self' file: blob: data:; font-src 'self' file: data:; connect-src 'self' blob: data:">
+  <title>HARU</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="titlebar">
+    <div class="brand"><span class="logo-dot"></span>HARU</div>
+    <div class="tb-day" id="tb-day"></div>
+    <nav id="nav">
+      <button data-view="room" class="on">방 <small>ROOM</small></button>
+      <button data-view="world">세상 <small>WORLD</small></button>
+      <button data-view="studio">작업실 <small>STUDIO</small></button>
+      <button data-view="lab">리듬 랩 <small>RHYTHM</small></button>
+      <button data-view="archive">기록 <small>ARCHIVE</small></button>
+      <button data-view="shop">방 꾸미기 <small>SHOP</small></button>
+    </nav>
+    <div class="tb-tools">
+      <button id="btn-mute" class="icon-btn" title="소리 끄기/켜기"></button>
+      <button id="btn-settings" class="icon-btn" title="설정"></button>
+    </div>
+    <div class="tb-overlay-space"></div>
+  </div>
+
+  <main>
+    <!-- ROOM -->
+    <section class="view active" id="view-room">
+      <canvas id="room-canvas"></canvas>
+      <div class="hud hud-tl" id="hud-status"></div>
+      <div class="hud hud-tr">
+        <canvas id="ring" width="300" height="300"></canvas>
+        <div class="ring-actions" id="ring-actions"></div>
+      </div>
+      <div class="hud hud-cam" id="cam-btns"></div>
+      <div id="bubble" class="bubble hidden"><div class="bubble-text"></div><div class="bubble-choices"></div></div>
+      <div class="hud hud-bottom" id="toolbar"></div>
+      <div class="hud hud-pop hidden" id="tool-pop"></div>
+      <div class="hud hud-final hidden" id="final-pop"></div>
+    </section>
+
+    <!-- WORLD -->
+    <section class="view" id="view-world">
+      <div class="world-grid">
+        <div class="panel orbit-panel">
+          <div class="panel-head"><span class="lbl">ORBIT · 오늘의 키워드 별자리</span><span class="lbl muted" id="orbit-meta"></span></div>
+          <canvas id="orbit-canvas"></canvas>
+        </div>
+        <div class="world-side">
+          <div class="panel">
+            <div class="panel-head"><span class="lbl">MOOD · 세상의 기분</span><span class="lbl" id="mood-word"></span></div>
+            <div id="mood-meters"></div>
+            <div id="cat-bar" class="cat-bar"></div>
+            <div id="cat-legend" class="cat-legend"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span class="lbl">SOURCES · 수집처</span><button class="mini-btn" id="btn-gather-preview">지금 둘러보기</button></div>
+            <div id="sources"></div>
+          </div>
+          <div class="panel grow">
+            <div class="panel-head"><span class="lbl">HEADLINES · 읽은 소식</span><span class="lbl muted" id="head-count"></span></div>
+            <ol id="headlines"></ol>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span class="lbl">WHISPER · 단어 속삭이기</span></div>
+            <div class="row"><input id="whisper-input" maxlength="16" placeholder="그 아이에게 들려줄 단어 (예: 첫눈)"><button class="btn" id="whisper-btn">속삭이기</button></div>
+            <div class="hint">속삭인 단어는 오늘(그리고 다음) 작품의 키워드에 섞여요.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDIO -->
+    <section class="view" id="view-studio">
+      <div class="studio">
+        <div class="st-col st-left">
+          <div class="st-row">
+            <div class="box wide"><div class="box-lbl">WAVEFORM <span class="accent2">LOUDNESS</span> <span id="lufs"></span></div><canvas id="cv-loud"></canvas></div>
+            <div class="box clock"><div class="box-lbl"><span class="sq"></span> CH 1</div><canvas id="cv-clock"></canvas></div>
+          </div>
+          <div class="st-row three">
+            <div class="box"><div class="box-lbl">SCOPE</div><canvas id="cv-scope"></canvas></div>
+            <div class="box"><div class="box-lbl">SPECTRUM</div><canvas id="cv-spec"></canvas></div>
+            <div class="box"><div class="box-lbl">VECTOR</div><canvas id="cv-vec"></canvas></div>
+          </div>
+          <div class="box roll"><div class="box-lbl">● NOTES <span class="muted" id="roll-meta"></span><span class="spacer"></span><button class="mini-btn" id="roll-prev">◀</button><button class="mini-btn" id="roll-follow">FOLLOW</button><button class="mini-btn" id="roll-next">▶</button></div><canvas id="cv-roll"></canvas></div>
+          <div class="box pads-box">
+            <div class="box-lbl">THROW A NOTE · 음 던지기 <span class="muted">— 작곡 중에 누르면 곡에 들어가요</span></div>
+            <div class="pads" id="pads"></div>
+          </div>
+        </div>
+        <div class="st-col st-right">
+          <div class="box song-info" id="song-info"></div>
+          <div class="box paint-box"><div class="box-lbl">CANVAS · 캔버스 <span class="muted">— 클릭하면 물감이 튀어요</span></div><canvas id="cv-paint"></canvas>
+            <div class="swatches" id="studio-swatches"></div></div>
+          <div class="box tone-box"><div class="box-lbl">TONE GRAPH</div><canvas id="cv-tone"></canvas></div>
+          <div class="box key-box">
+            <div class="box-lbl">KEY</div>
+            <div class="key-grid">
+              <div class="key-row"><span class="kdot ink"></span> 그 아이의 멜로디</div>
+              <div class="key-row"><span class="kdot pink"></span> 네가 던진 음 · 리듬</div>
+              <div class="key-row"><span class="kline blue"></span> 베이스의 길</div>
+              <div class="key-row"><span class="kline dashed"></span> 작곡 진행선</div>
+            </div>
+            <div class="transport" id="transport"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RHYTHM LAB -->
+    <section class="view" id="view-lab">
+      <div class="lab">
+        <div class="lab-list panel">
+          <div class="panel-head"><span class="lbl">WORLD ATLAS</span><span class="lbl muted" id="lab-known"></span></div>
+          <input id="lab-search" placeholder="장르 · 나라 검색">
+          <div id="genre-list"></div>
+        </div>
+        <div class="lab-main">
+          <div class="panel lab-head" id="lab-head"></div>
+          <div class="panel lab-grid-panel">
+            <div class="panel-head"><span class="lbl">STEP GRID · 직접 만져보기</span><span class="lbl muted">클릭: 강 → 약 → 고스트 → 쉼</span></div>
+            <div id="lab-grid"></div>
+            <canvas id="lab-cursor" class="lab-cursor"></canvas>
+          </div>
+          <div class="panel lab-controls" id="lab-controls"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARCHIVE -->
+    <section class="view" id="view-archive">
+      <div class="archive">
+        <div class="arch-list panel">
+          <div class="panel-head"><span class="lbl">ARCHIVE · 지금까지 만든 것</span><button class="mini-btn" id="btn-open-out">폴더 열기</button></div>
+          <div id="works"></div>
+        </div>
+        <div class="arch-detail panel" id="work-detail"><div class="empty">왼쪽에서 작품을 골라주세요.</div></div>
+      </div>
+    </section>
+
+    <!-- SHOP -->
+    <section class="view" id="view-shop">
+      <div class="shop">
+        <div class="panel shop-stats" id="shop-stats"></div>
+        <div class="panel shop-items"><div class="panel-head"><span class="lbl">ROOM ITEMS · 방 꾸미기</span><span class="lbl muted">작품을 완성하면 별을 받아요</span></div><div id="items"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+
+  <script src="../node_modules/lamejs/lame.min.js"></script>
+  <script src="../node_modules/mp4-muxer/build/mp4-muxer.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/genres.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/composer.js"></script>
+  <script src="js/synth.js"></script>
+  <script src="js/character.js"></script>
+  <script src="js/room.js"></script>
+  <script src="js/painter.js"></script>
+  <script src="js/viz.js"></script>
+  <script src="js/recorder.js"></script>
+  <script src="js/pet.js"></script>
+  <script src="js/diary.js"></script>
+  <script src="js/creation.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

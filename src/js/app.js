@@ -12,7 +12,7 @@
     sources: { googleNewsKR: true, googleNewsWorld: true, bbc: true, trendsKR: true, trendsUS: true, wikipedia: true, hackerNews: true, custom: [], weather: true, city: '서울', lat: 37.5665, lon: 126.978 },
     audio: { master: 0.8, music: 0.8, ambient: 0.5, sfx: 0.6, lofi: 0.3, voice: true, autoWeather: true, amb: { rain: 0, vinyl: 0.25, wind: 0, cafe: 0, fire: 0, waves: 0, night: 0, birds: 0, keys: 0.5 } },
     creation: { songSeconds: 75, artStyle: 'auto', posterSize: 1600, video: true, videoFps: 30, videoAudio: true },
-    visual: { theme: 'auto', camera: 'auto', showHud: true, reduceMotion: false, uiScale: 1 },
+    visual: { theme: 'auto', camera: 'auto', showHud: true, reduceMotion: false, uiScale: 1, renderer: '3d' },
     ai: { enabled: false, model: 'claude-opus-5-5' },
   };
 
@@ -43,8 +43,17 @@
     if (app.mobile && !(init.settings && init.settings.creation)) { app.settings.creation.posterSize = 1200; app.settings.general.sessionMinutes = 6; }
 
     app.audio = new H.AudioEngine();
-    app.room = new H.Room();
     app.painter = new H.Painter(900);
+    app.use3D = app.settings.visual.renderer !== '2d' && !!H.Room3D && H.webglOK();
+    if (app.use3D) {
+      try {
+        app.room = new H.Room3D($('room3d-canvas'));
+        app.room.setCharacter(app.settings.character);
+        $('room3d-canvas').classList.remove('hidden'); $('room-canvas').classList.add('hidden');
+        loadModel();
+      } catch (e) { console.error('3D init failed, using 2D', e); app.use3D = false; }
+    }
+    if (!app.use3D) app.room = new H.Room();
     app.room.paintCanvas = app.painter.canvas;
     app.pet = new H.Pet(app.state, app.settings.character);
     app.creation = new H.Creation(app);
@@ -95,7 +104,12 @@
     if (c.settings) H.openSettings(app);
     if (c.intervene && app.creation.active) app.creation.intervene(c.intervene.kind, Object.assign({}, c.intervene));
     if (c.tool) tool(c.tool);
+    if (c.creator) H.openCreator(app);
+    if (c.closeModal) { const b = document.querySelector('.modal-back'); if (b) b.querySelector('.modal-head .icon-btn').click(); }
     if (c.time != null) app.debugHours = c.time;
+    if (c.noAuto) app.settings.general.autoCreate = false;
+    if (c.items) { app.state.items = c.items.split(','); applyItems(); }
+    if (c.act) { const map = { type: ['desk', 'type', 'desk'], paint: ['easel', 'paint', 'easel'], read: ['nook', 'read', 'nook'] }[c.act]; if (map) { app.holdIdleUntil = performance.now() + 60000; app.pet.goTo(map[0], map[1]); setCam(map[2]); } }
     if (c.weather) app.room.weather = Object.assign({ temp: 3, ko: c.weather }, H.describeWeather({ clear: 0, rain: 61, snow: 71, cloudy: 3, storm: 95 }[c.weather] ?? 0));
   }
 
@@ -115,9 +129,53 @@
     if (key.startsWith('mini') || key.startsWith('general.autoStart') || key.startsWith('general.startHidden') || key.startsWith('general.closeAction') || key.startsWith('general.minimizeToMini')) window.haru && window.haru.applyWindowSettings(app.settings);
     if (key === 'petName') renderHud();
     app.saveSettings();
+    if (key === 'visual.renderer') { H.toast('방 그래픽을 바꾸는 중… 잠시 후 다시 열려요.'); setTimeout(() => location.reload(), 700); }
   };
 
-  app.applyCharacter = () => { app.pet.cfg = app.settings.character; applyAudio(); renderHud(); };
+  app.applyCharacter = () => {
+    app.pet.cfg = app.settings.character; applyAudio(); renderHud();
+    if (!app.room.is3D) return;
+    const cfg = app.settings.character;
+    if (cfg.model !== app.loadedModel) loadModel();
+    else if (cfg.model === 'procedural') app.room.setCharacter(cfg);
+    else if (app.room.char && app.room.char.setAccessory) app.room.char.setAccessory(cfg);
+  };
+
+  /* 3D models: bundled CC0 VRoid samples (shibu / vivi), the procedural character, or the user's own .vrm */
+  H.AVATARS = [
+    { id: 'shibu', ko: '시부', sub: 'Sendagaya Shibu · CC0', thumb: 'assets/avatars/shibu.png' },
+    { id: 'vivi', ko: '비비', sub: 'Vivi · CC0', thumb: 'assets/avatars/vivi.png' },
+    { id: 'procedural', ko: '직접 꾸미기', sub: '종족·머리·옷을 고르는 캐릭터' },
+    { id: 'custom', ko: '내 VRM', sub: 'VRoid 등에서 만든 .vrm 파일' },
+  ];
+  const toBuf = (bytes) => (bytes.buffer ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) : bytes);
+  async function loadModel() {
+    if (!app.room.is3D) return;
+    const cfg = app.settings.character;
+    const model = cfg.model || 'shibu';
+    app.loadedModel = model;
+    if (model === 'procedural') { app.room.setCharacter(cfg); return; }
+    if (!window.haru) return;
+    try {
+      const bytes = model === 'custom' ? await window.haru.readAvatar() : await window.haru.readAsset(`avatars/${model}.vrm`);
+      if (!bytes) throw new Error('missing model file');
+      const c = await H.VrmCharacter.fromBuffer(toBuf(bytes));
+      if (app.loadedModel !== model) { c.dispose(); return; }
+      c.setAccessory(cfg);
+      app.room.useCharacter(c);
+    } catch (e) {
+      console.warn('model load failed', e);
+      H.toast('3D 캐릭터를 불러오지 못해서 기본 캐릭터로 보여줄게요.', 'error');
+      app.room.setCharacter(cfg);
+    }
+  }
+  app.importVrm = async (file) => {
+    const buf = await file.arrayBuffer();
+    await H.VrmCharacter.fromBuffer(buf.slice(0));
+    if (window.haru && window.haru.saveAvatar) await window.haru.saveAvatar(new Uint8Array(buf));
+    app.settings.character.model = 'custom'; app.settings.character.vrmName = file.name; app.saveSettings();
+    app.loadedModel = null; app.applyCharacter();
+  };
   app.onFirstSetupDone = () => {
     app.state.firstRun = false; app.saveState();
     setTimeout(() => app.say(`안녕! 나는 ${app.settings.petName}. 매일 세상 소식을 듣고 음악이랑 그림을 만들 거야.`, { duration: 6 }), 600);
@@ -234,9 +292,10 @@
     if (performance.now() > bubbleUntil && !b.querySelector('.bubble-choices').children.length) { b.classList.add('hidden'); return; }
     if (app.view !== 'room') return;
     const p = app.pet;
-    const headY = p.y - (p.seated ? 128 : 150) * 1.5 + (p.seated ? 33 : 0) - 10;
-    const s = app.room.toScreen(p.x, headY);
-    const cv = $('room-canvas');
+    let s;
+    if (app.room.is3D) s = app.room.headScreen();
+    else { const headY = p.y - (p.seated ? 128 : 150) * 1.5 + (p.seated ? 33 : 0) - 10; s = app.room.toScreen(p.x, headY); }
+    const cv = roomCanvas();
     const x = H.clamp(s.x, 170, cv.clientWidth - 170), y = H.clamp(s.y, 90, cv.clientHeight - 20);
     b.style.left = x + 'px'; b.style.top = y + 'px';
   }
@@ -253,20 +312,26 @@
       const [id, ko] = t;
       tb.appendChild(el('button', { class: 'tool', 'data-tool': id, title: ko, onclick: () => tool(id), html: H.ICON[id] + `<span>${ko}</span>` }));
     });
-    const cv = $('room-canvas');
-    let drag = null;
-    const touches = new Map();
-    let pinch = null;
     $('hud-status').addEventListener('click', () => $('hud-status').classList.toggle('collapsed'));
     if (app.mobile && window.innerWidth < 760) $('hud-status').classList.add('collapsed');
+    [$('room-canvas'), $('room3d-canvas')].forEach(bindRoomPointer);
+    renderCamButtons();
+  }
+
+  /* drag = pan (2D) / orbit (3D), wheel & pinch = zoom, tap = interact */
+  function bindRoomPointer(cv) {
+    let drag = null, pinch = null;
+    const touches = new Map();
+    const R = () => app.room;
     cv.addEventListener('pointerdown', (e) => {
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touches.size === 2) {
         const [a, b] = [...touches.values()];
-        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: app.room.camTarget.z };
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: R().is3D ? 1 : R().camTarget.z };
         drag = null; return;
       }
-      drag = { x: e.clientX, y: e.clientY, moved: false, cam: Object.assign({}, app.room.camTarget) }; cv.setPointerCapture(e.pointerId);
+      drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: false, cam: R().is3D ? null : Object.assign({}, R().camTarget) };
+      cv.setPointerCapture(e.pointerId);
     });
     const endTouch = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
     cv.addEventListener('pointercancel', (e) => { endTouch(e); drag = null; });
@@ -275,21 +340,26 @@
       if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pinch && touches.size === 2) {
         const [a, b] = [...touches.values()];
-        const t = app.room.camTarget;
-        app.room.setCameraTarget(t.x, t.y, H.clamp(pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, 1, 4));
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (R().is3D) { R().zoom(pinch.d / Math.max(1, d)); pinch.d = d; }
+        else { const t = R().camTarget; R().setCameraTarget(t.x, t.y, H.clamp(pinch.z * d / pinch.d, 1, 4)); }
         goFree(); return;
       }
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (Math.hypot(dx, dy) > 6) drag.moved = true;
         if (drag.moved) {
-          const s = app.room.view.s;
-          app.room.setCameraTarget(drag.cam.x - dx / s, drag.cam.y - dy / s, drag.cam.z);
-          app.room.cam.x = app.room.camTarget.x; app.room.cam.y = app.room.camTarget.y;
+          if (R().is3D) R().orbit(e.clientX - drag.lx, e.clientY - drag.ly);
+          else {
+            const s = R().view.s;
+            R().setCameraTarget(drag.cam.x - dx / s, drag.cam.y - dy / s, drag.cam.z);
+            R().cam.x = R().camTarget.x; R().cam.y = R().camTarget.y;
+          }
+          drag.lx = e.clientX; drag.ly = e.clientY;
           goFree(); cv.classList.add('grab');
         }
-      } else {
-        const hit = app.room.hitTest(e.clientX - r.left, e.clientY - r.top, app.pet);
+      } else if (e.pointerType === 'mouse') {
+        const hit = R().hitTest(e.clientX - r.left, e.clientY - r.top, app.pet);
         cv.classList.toggle('hover-pet', hit === 'pet' || hit === 'window' || hit === 'kitty');
       }
     });
@@ -301,15 +371,18 @@
     });
     cv.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const t = app.room.camTarget;
+      if (R().is3D) { R().zoom(e.deltaY < 0 ? 1 / 1.12 : 1.12); goFree(); return; }
+      const t = R().camTarget;
       const r = cv.getBoundingClientRect();
-      const w = app.room.toWorld(e.clientX - r.left, e.clientY - r.top);
+      const w = R().toWorld(e.clientX - r.left, e.clientY - r.top);
       const nz = H.clamp(t.z * (e.deltaY < 0 ? 1.12 : 1 / 1.12), 1, 4);
-      app.room.setCameraTarget(H.lerp(t.x, w.x, 0.25 * (nz > t.z ? 1 : -0.3)), H.lerp(t.y, w.y, 0.25 * (nz > t.z ? 1 : -0.3)), nz);
+      R().setCameraTarget(H.lerp(t.x, w.x, 0.25 * (nz > t.z ? 1 : -0.3)), H.lerp(t.y, w.y, 0.25 * (nz > t.z ? 1 : -0.3)), nz);
       goFree();
     }, { passive: false });
-    renderCamButtons();
   }
+
+  function roomCanvas() { return app.room && app.room.is3D ? $('room3d-canvas') : $('room-canvas'); }
+  function camList() { return app.room && app.room.is3D ? H.CAMERAS3D : H.CAMERAS; }
 
   function goFree() { app.camFree = true; app.camMode = 'manual'; app.camName = null; renderCamButtons(); }
 
@@ -317,18 +390,18 @@
     const box = $('cam-btns'); if (!box) return;
     box.innerHTML = '';
     box.appendChild(el('button', { class: 'cam-btn' + (app.camMode === 'auto' ? ' on' : ''), onclick: () => { app.camFree = false; app.camMode = 'auto'; app.settings.visual.camera = 'auto'; renderCamButtons(); } }, '◎ 자동 연출'));
-    Object.entries(H.CAMERAS).forEach(([k, c]) => box.appendChild(el('button', { class: 'cam-btn' + (app.camMode === 'manual' && app.camName === k ? ' on' : ''), onclick: () => setCam(k) }, c.ko)));
+    Object.entries(camList()).forEach(([k, c]) => box.appendChild(el('button', { class: 'cam-btn' + (app.camMode === 'manual' && app.camName === k ? ' on' : ''), onclick: () => setCam(k) }, c.ko)));
   }
   function setCam(k) { app.camMode = 'manual'; app.camFree = false; app.camName = k; app.room.setCamera(k); renderCamButtons(); }
 
   function roomClick(e) {
-    const cv = $('room-canvas'); const r = cv.getBoundingClientRect();
+    const cv = roomCanvas(); const r = cv.getBoundingClientRect();
     const sx = e.clientX - r.left, sy = e.clientY - r.top;
     const hit = app.room.hitTest(sx, sy, app.pet);
     if (app.splashColor) {
-      const w = app.room.toWorld(sx, sy);
       let x = Math.random() * 0.7 + 0.15, y = Math.random() * 0.7 + 0.15;
-      if (hit === 'easel') { x = H.clamp((w.x - 1215) / 200); y = H.clamp((w.y - 470) / 200); }
+      if (hit === 'easel' && app.room.is3D) { const uv = app.room.easelUV(sx, sy); if (uv) { x = uv.x; y = uv.y; } }
+      else if (hit === 'easel') { const w = app.room.toWorld(sx, sy); x = H.clamp((w.x - 1215) / 200); y = H.clamp((w.y - 470) / 200); }
       doSplash(x, y, app.splashColor);
       app.splashColor = null; cv.classList.remove('splash-armed'); closePop();
       return;
@@ -428,7 +501,7 @@
     } else if (kind === 'palette') {
       head('SPILL PAINT · 물감 쏟기', '색을 고르고 이젤(또는 아무 데나)을 클릭');
       const sw = el('div', { class: 'swatches' });
-      SPLASH_COLORS.forEach((c) => sw.appendChild(el('div', { class: 'swatch', style: { background: c }, onclick: (e) => { app.splashColor = c; [...sw.children].forEach((x) => x.classList.remove('sel')); e.target.classList.add('sel'); $('room-canvas').classList.add('splash-armed'); } })));
+      SPLASH_COLORS.forEach((c) => sw.appendChild(el('div', { class: 'swatch', style: { background: c }, onclick: (e) => { app.splashColor = c; [...sw.children].forEach((x) => x.classList.remove('sel')); e.target.classList.add('sel'); roomCanvas().classList.add('splash-armed'); } })));
       pop.appendChild(sw);
     } else if (kind === 'whisper') {
       head('WHISPER · 단어 속삭이기', '작품 키워드에 섞여요');
@@ -913,6 +986,7 @@
   function idleBrain(dt) {
     const pet = app.pet, cr = app.creation;
     if (cr.active || !app.settings.setupDone) return;
+    if (app.holdIdleUntil && performance.now() < app.holdIdleUntil) return;
     if (isNight()) {
       if (pet.act !== 'sleep' && !pet.target) { pet.goTo('nook', 'sleep'); app.say(H.fillLine('night_sleep'), { quiet: true }); }
       pet.nudge('energy', dt * 0.05);
@@ -972,6 +1046,12 @@
       else if (pet.spot === 'window') base = 'window';
       const r = Math.random();
       camPick = r < 0.22 ? 'wide' : r < 0.42 && (pet.spot === 'desk') ? 'close' : base;
+      if (app.room.is3D && pet.spot === 'desk' && r > 0.42 && r < 0.58) camPick = 'shoulder';
+    }
+    if (app.room.is3D) {
+      const want = pet.target ? 'wide' : camPick;
+      if (app.room.camName !== want) app.room.setCamera(want);
+      return;
     }
     if (pet.target) { app.room.setCameraTarget(H.lerp(800, pet.x, 0.5), 480, 1.25); return; }
     const c = H.CAMERAS[camPick];
@@ -997,9 +1077,12 @@
   function render() {
     const v = app.view;
     if (v === 'room') {
-      const cv = $('room-canvas'); const { w, h, dpr } = H.fitCanvas(cv);
-      const ctx = cv.getContext('2d');
-      app.room.draw(ctx, w, h, app.pet, { dpr });
+      if (app.room.is3D) { const cv = $('room3d-canvas'); app.room.render(cv.clientWidth, cv.clientHeight); }
+      else {
+        const cv = $('room-canvas'); const { w, h, dpr } = H.fitCanvas(cv);
+        const ctx = cv.getContext('2d');
+        app.room.draw(ctx, w, h, app.pet, { dpr });
+      }
       updateBubble();
       const rc = $('ring'); const rctx = rc.getContext('2d'); rctx.setTransform(2, 0, 0, 2, 0, 0);
       const cr = app.creation;
@@ -1068,7 +1151,7 @@
       name: app.settings.petName, cfg: app.settings.character, act: pose.act === 'walk' ? 'idle' : pose.act, emo: pose.emo,
       phase: cr.state === 'running' ? cr.phaseInfo.ph.ko : cr.state === 'break' ? '휴식 중' : cr.state === 'finalizing' ? '마무리 중' : (app.state.lastWorkDate === H.dateKey() ? '오늘 작품 완성' : '쉬는 중'),
       progress: cr.active ? cr.progress : -1, remaining: cr.state === 'running' ? H.fmtClock(cr.remainingSec) : '',
-      line: withLine ? app.lastLine : null, playing: app.audio.playing,
+      line: withLine ? app.lastLine : null, playing: app.audio.playing, renderer: app.room && app.room.is3D ? '3d' : '2d',
     });
   }
 

@@ -176,6 +176,7 @@
       },
       {
         id: 'visual', ko: '화면', fields: [
+          { key: 'visual.renderer', ko: '방 그래픽', sub: '오래된 기기에서 버벅이면 2D로 바꿔보세요', type: 'select', options: [['3d', '3D 애니풍 (기본)'], ['2d', '2D 가벼운 모드']] },
           { key: 'visual.theme', ko: '테마', type: 'select', options: [['auto', '시간 따라 자동 (밤엔 어둡게)'], ['light', '밝게'], ['dark', '어둡게']] },
           { key: 'visual.camera', ko: '방 시점', type: 'select', options: [['auto', '자동 연출 (하는 일 따라)'], ['manual', '직접 고르기']] },
           { key: 'visual.showHud', ko: '방에 상태판 보이기', type: 'switch' },
@@ -225,10 +226,18 @@
   H.openCreator = function (app, first) {
     const cfg = Object.assign({}, H.DEFAULT_CHARACTER, app.settings.character || {});
     let name = app.settings.petName || '모모';
+    const use3D = !!(app.room && app.room.is3D && H.CharStage);
     const cv = el('canvas', { width: 600, height: 680 });
-    let raf, t = 0, act = 'wave';
+    let raf, t = 0, act = 'wave', stage = null;
+    if (use3D) { try { stage = new H.CharStage(cv, { bg: '#f3f1ec' }); stage.setModel(cfg); } catch (e) { stage = null; } }
     const draw = () => {
       t += 1 / 60;
+      if (stage) {
+        raf = requestAnimationFrame(draw);
+        try { stage.render(1 / 60, { t, act, emo: act === 'happy' ? 'happy' : 'neutral', blink: H.blinkAt(t), look: { x: Math.sin(t * 0.6) * 0.5, y: 0 } }, 300, 340, Math.sin(t * 0.4) * 0.35); }
+        catch (e) { if (!draw.err) { draw.err = 1; console.error('creator preview', e); } }
+        return;
+      }
       const ctx = cv.getContext('2d');
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, 600, 680);
       ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.beginPath(); ctx.ellipse(300, 600, 120, 22, 0, 0, Math.PI * 2); ctx.fill();
@@ -237,10 +246,34 @@
       raf = requestAnimationFrame(draw);
     };
     const opts = (label, list, key) => el('div', { class: 'opt-group' }, el('div', null, label), el('div', { class: 'opts' }, list.map((o) => {
-      const b = el('button', { class: cfg[key] === o.id ? 'on' : '', onclick: () => { cfg[key] = o.id; [...b.parentNode.children].forEach((x) => x.classList.remove('on')); b.classList.add('on'); act = 'happy'; setTimeout(() => { act = 'idle'; }, 900); } }, o.ko);
+      const b = el('button', { class: cfg[key] === o.id ? 'on' : '', onclick: () => { cfg[key] = o.id; [...b.parentNode.children].forEach((x) => x.classList.remove('on')); b.classList.add('on'); act = 'happy'; setTimeout(() => { act = 'idle'; }, 900); if (stage) stage.setModel(cfg); } }, o.ko);
       return b;
     })));
-    const color = (label, key) => { const i = el('input', { type: 'color', value: cfg[key] }); i.addEventListener('input', () => { cfg[key] = i.value; }); return el('label', null, label, i); };
+    const color = (label, key) => { const i = el('input', { type: 'color', value: cfg[key] }); i.addEventListener('input', () => { cfg[key] = i.value; }); i.addEventListener('change', () => { if (stage) stage.setModel(cfg); }); return el('label', null, label, i); };
+    /* 3D model picker (bundled CC0 VRoid models, procedural, or the user's own VRM) */
+    const proceduralOnly = [];
+    const syncGroups = () => proceduralOnly.forEach((g) => g.classList.toggle('hidden', use3D && cfg.model !== 'procedural'));
+    const fileInp = el('input', { type: 'file', accept: '.vrm', style: { display: 'none' } });
+    fileInp.addEventListener('change', async () => {
+      const f = fileInp.files[0]; if (!f) return;
+      try { H.toast('VRM 불러오는 중…'); await app.importVrm(f); cfg.model = 'custom'; cfg.vrmName = f.name; stage && (stage.key = '', stage.setModel(cfg)); renderModels(); syncGroups(); H.toast('내 3D 아바타를 불러왔어요: ' + f.name); }
+      catch (e) { H.toast('VRM 파일을 읽지 못했어요: ' + (e.message || e), 'error'); }
+    });
+    const modelBox = el('div', { class: 'model-pick' });
+    const renderModels = () => {
+      modelBox.innerHTML = '';
+      (H.AVATARS || []).forEach((m) => {
+        if (m.id === 'custom' && !app.settings.character.vrmName && cfg.model !== 'custom') {
+          modelBox.appendChild(el('button', { class: 'model-card', onclick: () => fileInp.click() }, el('div', { class: 'mthumb plus' }, '+'), el('b', null, 'VRM 불러오기'), el('small', null, 'VRoid Studio 등에서 만든 파일')));
+          return;
+        }
+        modelBox.appendChild(el('button', { class: 'model-card' + (cfg.model === m.id ? ' on' : ''), onclick: () => {
+          if (m.id === 'custom' && cfg.model === 'custom') { fileInp.click(); return; }
+          cfg.model = m.id; renderModels(); syncGroups(); if (stage) stage.setModel(cfg); act = 'happy'; setTimeout(() => { act = 'idle'; }, 900);
+        } }, m.thumb ? el('img', { class: 'mthumb', src: m.thumb }) : el('div', { class: 'mthumb' }, m.id === 'custom' ? 'VRM' : '✎'), el('b', null, m.ko), el('small', null, m.id === 'custom' ? (app.settings.character.vrmName || m.sub) : m.sub)));
+      });
+    };
+    renderModels();
     const nameInp = el('input', { value: name, maxlength: 12 }); nameInp.addEventListener('input', () => { name = nameInp.value; });
     const userInp = el('input', { value: app.settings.userName || '', maxlength: 12, placeholder: '예: 수민' });
     const presets = [
@@ -250,16 +283,20 @@
       { skin: '#fde8e0', hair: '#f4f1ee', eye: '#5a6fb0', cloth: '#b9a7e6', accent: '#ff9db0' },
       { skin: '#d9a98a', hair: '#1f1f2a', eye: '#1a1a22', cloth: '#2f3240', accent: '#ff6f61' },
     ];
+    const pg = (node) => { proceduralOnly.push(node); return node; };
     const body = el('div', { class: 'creator' }, cv, el('div', null,
       el('div', { class: 'opt-group' }, el('div', null, 'NAME · 이름'), el('div', { class: 'row' }, nameInp)),
       el('div', { class: 'opt-group' }, el('div', null, 'YOU · 그 아이가 부를 내 이름'), el('div', { class: 'row' }, userInp)),
-      opts('SPECIES · 종족', H.SPECIES, 'species'),
-      opts('HAIR · 머리', H.HAIR_STYLES, 'hairStyle'),
-      opts('OUTFIT · 옷', H.OUTFITS, 'outfit'),
-      opts('ACCESSORY · 소품', H.ACCESSORIES, 'accessory'),
-      el('div', { class: 'opt-group' }, el('div', null, 'COLORS · 색'), el('div', { class: 'colors' }, color('피부', 'skin'), color('머리/털', 'hair'), color('눈', 'eye'), color('옷', 'cloth'), color('포인트', 'accent'))),
-      el('div', { class: 'opt-group' }, el('div', null, 'PRESETS'), el('div', { class: 'swatches' }, presets.map((p) => el('div', { class: 'swatch', style: { background: `linear-gradient(135deg, ${p.hair} 50%, ${p.cloth} 50%)` }, onclick: () => { Object.assign(cfg, p); m.close(); app.settings.character = cfg; H.openCreator(app, first); } })))),
+      use3D ? el('div', { class: 'opt-group' }, el('div', null, 'MODEL · 3D 캐릭터'), modelBox, fileInp) : null,
+      pg(opts('SPECIES · 종족', H.SPECIES, 'species')),
+      pg(opts('HAIR · 머리', H.HAIR_STYLES, 'hairStyle')),
+      pg(opts('OUTFIT · 옷', H.OUTFITS, 'outfit')),
+      opts('ACCESSORY · 소품', use3D ? H.ACCESSORIES.filter((a) => a.id === 'headphones' || a.id === 'none' || cfg.model === 'procedural') : H.ACCESSORIES, 'accessory'),
+      pg(el('div', { class: 'opt-group' }, el('div', null, 'COLORS · 색'), el('div', { class: 'colors' }, color('피부', 'skin'), color('머리/털', 'hair'), color('눈', 'eye'), color('옷', 'cloth'), color('포인트', 'accent')))),
+      pg(el('div', { class: 'opt-group' }, el('div', null, 'PRESETS'), el('div', { class: 'swatches' }, presets.map((p) => el('div', { class: 'swatch', style: { background: `linear-gradient(135deg, ${p.hair} 50%, ${p.cloth} 50%)` }, onclick: () => { Object.assign(cfg, p); m.close(); app.settings.character = cfg; H.openCreator(app, first); } }))))),
+      use3D ? el('div', { class: 'hint' }, '시부·비비는 pixiv VRoid의 CC0(퍼블릭 도메인) 샘플 모델이에요.') : null,
     ));
+    syncGroups();
     const m = H.modal({
       title: first ? '나만의 아이 만들기' : '캐릭터 꾸미기', body, wide: true,
       foot: [el('button', { class: 'btn primary', onclick: () => {
@@ -267,7 +304,7 @@
         app.settings.setupDone = true; app.saveSettings(); app.applyCharacter(); m.close();
         if (first) app.onFirstSetupDone();
       } }, first ? '이 아이로 시작하기' : '저장')],
-      onClose: () => cancelAnimationFrame(raf),
+      onClose: () => { cancelAnimationFrame(raf); if (stage) stage.dispose(); },
     });
     draw();
   };

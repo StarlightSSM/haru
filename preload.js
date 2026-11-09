@@ -1,7 +1,7 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 
-const ON = new Set(['mini:poke', 'visibility', 'cmd', 'settings:external', 'mini:status', 'mini:motion', 'mini:settings']);
+const ON = new Set(['mini:poke', 'visibility', 'cmd', 'settings:external', 'mini:status', 'mini:motion', 'mini:settings', 'mini:avatar']);
 
 contextBridge.exposeInMainWorld('haru', {
   init: () => ipcRenderer.invoke('init'),
@@ -22,6 +22,10 @@ contextBridge.exposeInMainWorld('haru', {
   aiDiary: (payload) => ipcRenderer.invoke('ai:diary', payload),
   aiTest: (model) => ipcRenderer.invoke('ai:test', model),
   miniStatus: (s) => ipcRenderer.send('mini:status', s),
+  readAsset: (rel) => ipcRenderer.invoke('asset:read', rel),
+  saveAvatar: (bytes) => ipcRenderer.invoke('avatar:save', bytes),
+  readAvatar: () => ipcRenderer.invoke('avatar:read'),
+  clearAvatar: () => ipcRenderer.invoke('avatar:clear'),
   mini: {
     poke: () => ipcRenderer.send('mini:poke'),
     open: () => ipcRenderer.send('mini:open'),

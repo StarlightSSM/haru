@@ -149,7 +149,7 @@
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#f2f3f1'; ctx.fillRect(0, 0, W, Hh);
-    s.room.draw(ctx, W, Hh, s.pet, { cam: s.cam || s.room.cam });
+    s.room.draw(ctx, W, Hh, s.pet, { cam: s.cam || s.room.cam, camName: s.camName });
     /* painting inset */
     const pw = Math.round(Hh * 0.3), m = 22;
     if (s.painter) {

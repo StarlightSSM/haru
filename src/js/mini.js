@@ -8,10 +8,24 @@
   let opts = { bubble: true };
   let line = null, lineUntil = 0, t = 0, last = performance.now(), poked = 0;
 
+  /* 3D stage (same model as the room) when WebGL + three are available and the room uses 3D */
+  let stage = null;
+  const cv3 = document.getElementById('cv3');
+  const want3D = () => status.renderer !== '2d' && H.CharStage && H.webglOK3 !== false;
+  function ensureStage() {
+    if (stage || !want3D()) return;
+    try { stage = new H.CharStage(cv3, { alpha: true, fov: 24 }); } catch (e) { H.webglOK3 = false; stage = null; }
+  }
   if (window.haru) {
-    window.haru.on('mini:status', (s) => { status = Object.assign(status, s); if (s.line) { line = s.line; lineUntil = performance.now() + Math.max(4000, s.line.length * 110); } });
+    window.haru.on('mini:status', (s) => {
+      status = Object.assign(status, s);
+      if (s.line) { line = s.line; lineUntil = performance.now() + Math.max(4000, s.line.length * 110); }
+      ensureStage(); if (stage && s.cfg) stage.setModel(s.cfg);
+      if (stage && status.renderer === '2d') { stage.dispose(); stage = null; cv3.width = 1; }
+    });
     window.haru.on('mini:motion', (m) => { motion = m; });
     window.haru.on('mini:settings', (s) => { opts = Object.assign(opts, s); });
+    window.haru.on('mini:avatar', () => { if (stage) { stage.key = ''; stage.setModel(status.cfg); } });
   }
 
   /* pointer: click = pat, double click = open, drag = move, right = menu */
@@ -82,6 +96,18 @@
     if (now - poked < 1300) { act = 'happy'; emo = 'love'; }
     const floatBob = motion.mode === 'float' && !motion.dragging ? Math.sin(t * 1.6) * 5 * s : 0;
     const base = h - 10 * s + floatBob;
+    if (stage && stage.char) {
+      /* 3D: render the model into the lower part of the window, overlay bubble on the 2D canvas */
+      const top = 30 * s;
+      cv3.style.top = (top - floatBob * 0) + 'px'; cv3.style.height = (h - top) + 'px';
+      cv3.style.transform = `translateY(${floatBob}px) rotate(${motion.dragging ? Math.sin(t * 6) * 6 : 0}deg)`;
+      const yaw = act === 'walk' ? (motion.dir < 0 ? -1.2 : 1.2) : Math.sin(t * 0.4) * 0.25;
+      stage.render(dt, { t, act, emo, seated: false, blink: H.blinkAt(t, 5), look: { x: 0, y: 0 }, talk: now < lineUntil - 2000 ? Math.abs(Math.sin(t * 16)) : 0 }, w, h - top, yaw);
+      if (status.playing && act !== 'sleep') { ctx.fillStyle = '#5b6cff'; ctx.font = `${14 * s}px "Segoe UI Symbol"`; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 3); ctx.fillText('♪', w * 0.8, h * 0.45 - Math.sin(t * 2) * 6); ctx.globalAlpha = 1; }
+      if (opts.bubble !== false) { if (line && now < lineUntil) bubble(line, w, 4); else pill(w); }
+      requestAnimationFrame(frame);
+      return;
+    }
     /* shadow */
     if (motion.mode !== 'float') { ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.ellipse(w / 2, h - 8 * s, 34 * s, 6 * s, 0, 0, Math.PI * 2); ctx.fill(); }
     else { ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.beginPath(); ctx.ellipse(w / 2, h - 4 * s, (26 - floatBob / s) * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill(); }

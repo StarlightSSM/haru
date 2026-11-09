@@ -97,6 +97,22 @@ HARU는 앱스토어·플레이스토어에 올라가 있지 않은 **개인 배
 - 휴대폰에서 다른 점은 [안드로이드](#안드로이드-휴대폰-aos)와 같아요 (미니 아바타 없음, 앱이 켜져 있을 때만 작업 진행, AI 일기 미지원).
   아이폰에서는 기기에 따라 작업 과정 영상(MP4)이 만들어지지 않을 수 있어요. 음악·그림·일기는 그대로 저장돼요.
 
+## 3D 캐릭터 · 방
+
+- 방은 three.js로 그린 3D 공간이에요. 창밖 하늘이 실제 시간을 따라 바뀌고(노을·밤하늘·도시 불빛), 해가 지는 시간엔 창문으로 노을빛이 들어와요.
+- **관찰 시점**: 자동 연출 · 전체 · 책상 · 가까이(얼굴) · 어깨 너머 · 이젤 · 창밖 · 책 읽는 곳. 화면을 끌면 시점이 돌아가고, 휠·두 손가락으로 확대돼요.
+- **기본 캐릭터는 아래 CC0(퍼블릭 도메인) 3D 모델**이에요. 캐릭터 꾸미기에서 바꿀 수 있어요.
+
+| 모델 | 출처 | 라이선스 |
+|---|---|---|
+| 시부 (Sendagaya Shibu) — 기본 | pixiv VRoid Studio 샘플 모델, GitHub [madjin/vrm-samples](https://github.com/madjin/vrm-samples) `vroid/beta/` | CC0 1.0 (파일 안 VRM 메타데이터에도 `CC0`, 상업 이용 허용) |
+| 비비 (Vivi) | 위와 같음 | CC0 1.0 |
+
+  자세한 내용은 [src/assets/avatars/LICENSE.md](src/assets/avatars/LICENSE.md). 조건부 라이선스인 AvatarSample_A·B·C는 넣지 않았어요.
+- **직접 꾸미기**: 종족·머리·옷·색을 고르는, 코드로 만든 3D 캐릭터.
+- **내 VRM 불러오기**: [VRoid Studio](https://vroid.com/studio)(무료)에서 만든 `.vrm` 파일을 넣으면 그 아이가 대신 움직여요. 바탕화면 미니 아바타도 같은 모델이 돼요.
+- 오래된 기기에서 버벅이면 설정 › 화면 › 방 그래픽을 **2D 가벼운 모드**로 바꿀 수 있어요. WebGL을 못 쓰는 기기는 자동으로 2D로 열려요.
+
 ## 하루의 흐름
 
 1. **세상 읽기**: 구글 뉴스(한국/세계), BBC, 구글 트렌드(한국/미국), 위키백과 많이 본 문서, Hacker News, 날씨(Open-Meteo) 수집
@@ -141,6 +157,7 @@ npm run dist         # 설치 파일 빌드 → dist/
 npm run android      # 안드로이드 APK → android/app/build/outputs/apk/debug/
 ```
 안드로이드 빌드는 `%LOCALAPPDATA%\haru-build\jdk-21*` (포터블 JDK 21)과 `%LOCALAPPDATA%\Android\Sdk` 를 사용해요. Gradle 버전은 8.14.3으로 고정해야 해요(9.6+는 현재 Android Gradle Plugin과 호환 안 됨).
+3D 엔진(three.js + three-vrm)은 `tools/build-3d.js` 가 esbuild로 `src/js/vendor/three-bundle.js` 한 파일로 묶어요 (`npm start`·`dist`·`android` 가 자동 실행). 3D 코드: `src/js/char3d.js`(캐릭터·VRM 포즈), `src/js/room3d.js`(방·조명·카메라). 개발용 미리보기: `tools/shot-3d.js`, `tools/shot-vrm.js`.
 모바일 코드는 `src/` 를 그대로 쓰고, `tools/build-web.js` 가 `www/` 를 만들면서 `src/js/platform-mobile.js` (Capacitor 연결층)를 끼워 넣어요.
 VS Code 터미널에서는 `ELECTRON_RUN_AS_NODE`가 설정돼 있을 수 있으니 먼저 `Remove-Item Env:ELECTRON_RUN_AS_NODE`.
 `tools/test-main.js`: 작곡·렌더·MP3·MP4 성능 측정용 하네스.

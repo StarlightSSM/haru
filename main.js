@@ -202,7 +202,7 @@ function send(ch, data) { if (mainWin && !mainWin.isDestroyed()) mainWin.webCont
 /* ================= IPC ================= */
 ipcMain.handle('init', () => ({
   settings, state, fast: FAST, hasKey: fs.existsSync(fileOf('key.bin')), version: app.getVersion(), versions: process.versions,
-  shot: SHOT ? { time: process.env.HARU_TIME != null ? parseFloat(process.env.HARU_TIME) : undefined, weather: process.env.HARU_WEATHER } : null,
+  shot: SHOT ? { time: process.env.HARU_TIME != null ? parseFloat(process.env.HARU_TIME) : undefined, weather: process.env.HARU_WEATHER, noAuto: process.env.HARU_NOAUTO === '1', items: process.env.HARU_ITEMS } : null,
 }));
 ipcMain.handle('settings:save', (e, s) => { settings = s; writeJSON(fileOf('settings.json'), s); applyWindowSettings(); if (mainWin) { const d = isDarkNow(); try { mainWin.setTitleBarOverlay({ color: d ? '#16181d' : '#f6f7f5', symbolColor: d ? '#e7e8eb' : '#1b1d22' }); } catch (er) { /* */ } } return true; });
 ipcMain.handle('state:save', (e, s) => { state = s; writeJSON(fileOf('state.json'), s); return true; });
@@ -262,6 +262,18 @@ ipcMain.handle('works:list', async () => {
   out.sort((a, b) => (b.meta.createdAt || 0) - (a.meta.createdAt || 0));
   return out.slice(0, 300);
 });
+
+/* bundled read-only assets (e.g. the CC0 avatars) — renderer fetch() can't read file:// */
+ipcMain.handle('asset:read', (e, rel) => {
+  const base = path.join(__dirname, 'src', 'assets');
+  const p = path.normalize(path.join(base, String(rel)));
+  if (!p.startsWith(base)) return null;
+  try { return new Uint8Array(fs.readFileSync(p)); } catch (err) { return null; }
+});
+/* user 3D avatar (.vrm) kept in userData; shared with the mini window */
+ipcMain.handle('avatar:save', (e, bytes) => { fs.writeFileSync(fileOf('avatar.vrm'), Buffer.from(bytes)); if (miniWin) miniWin.webContents.send('mini:avatar'); return true; });
+ipcMain.handle('avatar:read', () => { try { return new Uint8Array(fs.readFileSync(fileOf('avatar.vrm'))); } catch (e) { return null; } });
+ipcMain.handle('avatar:clear', () => { try { fs.unlinkSync(fileOf('avatar.vrm')); } catch (e) { /* none */ } if (miniWin) miniWin.webContents.send('mini:avatar'); return true; });
 
 ipcMain.handle('open:path', (e, p) => shell.openPath(p));
 ipcMain.handle('open:item', (e, p) => shell.showItemInFolder(p));
@@ -366,6 +378,17 @@ async function runShots() {
     send('cmd', { view: 'room' }); send('cmd', { cam: 'close' }); await wait(3000); await cap('08_close');
     if (miniWin || true) { hideMainToMini(); await wait(1500); if (miniWin) { const img = await miniWin.webContents.capturePage(); fs.writeFileSync(path.join(dir, '09_mini.png'), img.toPNG()); } }
     quitting = true; app.quit();
+  } else if (plan === 'creator') {
+    send('cmd', { creator: true }); await wait(5000); await cap('creator');
+    const info = await mainWin.webContents.executeJavaScript(`(() => { const s = document.querySelectorAll('canvas'); return [...s].map(c => c.width + 'x' + c.height).join(' ') })()`);
+    console.log('canvases', info);
+    hideMainToMini(); await wait(4000);
+    if (miniWin) { const img = await miniWin.webContents.capturePage(); fs.writeFileSync(path.join(dir, 'mini.png'), img.toPNG()); }
+    quitting = true; app.quit();
+  } else if (plan === 'cams3d') {
+    for (const c of ['wide', 'desk', 'close', 'shoulder', 'window', 'nook', 'easel']) { send('cmd', { cam: c }); await wait(3200); await cap('cam_' + c); }
+    for (const a of ['type', 'paint', 'read']) { send('cmd', { act: a }); await wait(11000); await cap('act_' + a); if (a === 'type') { send('cmd', { cam: 'close' }); await wait(3000); await cap('act_type_close'); send('cmd', { cam: 'shoulder' }); await wait(3000); await cap('act_type_shoulder'); } }
+    quitting = true; app.quit();
   } else if (plan === 'create') {
     send('cmd', { create: true });
     for (let i = 0; i < 14; i++) {
@@ -380,6 +403,10 @@ async function runShots() {
     await wait(30000);
     await cap('c90_done');
     send('cmd', { view: 'archive' }); await wait(2500); await cap('c91_archive');
+    send('cmd', { view: 'room' }); send('cmd', { creator: true }); await wait(4000); await cap('c92_creator');
+    send('cmd', { closeModal: true });
+    hideMainToMini(); await wait(4000);
+    if (miniWin) { const img = await miniWin.webContents.capturePage(); fs.writeFileSync(path.join(dir, 'c93_mini.png'), img.toPNG()); }
     quitting = true; app.quit();
   }
 }

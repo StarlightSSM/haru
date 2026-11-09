@@ -138,6 +138,25 @@
         return true;
       } catch (e) { return false; }
     },
+    async readAsset(rel) {
+      try { const r = await fetch('assets/' + rel); return r.ok ? new Uint8Array(await r.arrayBuffer()) : null; } catch (e) { return null; }
+    },
+    async saveAvatar(bytes) {
+      if (!native) { window.__avatar = bytes; return true; }
+      const CH = 3 * 1024 * 1024;
+      for (let i = 0; i < bytes.length; i += CH) await call('Filesystem', i ? 'appendFile' : 'writeFile', { path: 'avatar.vrm', data: b64(bytes.subarray(i, i + CH)), directory: 'DATA' });
+      return true;
+    },
+    async readAvatar() {
+      if (!native) return window.__avatar || null;
+      try {
+        const r = await call('Filesystem', 'readFile', { path: 'avatar.vrm', directory: 'DATA' });
+        const bin = atob(r.data); const out = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+      } catch (e) { return null; }
+    },
+    async clearAvatar() { if (native) { try { await call('Filesystem', 'deleteFile', { path: 'avatar.vrm', directory: 'DATA' }); } catch (e) { /* none */ } } else window.__avatar = null; return true; },
     setApiKey: async () => false,
     aiDiary: async () => ({ ok: false, error: 'mobile' }),
     aiTest: async () => ({ ok: false, error: '모바일 버전에서는 아직 지원하지 않아요' }),

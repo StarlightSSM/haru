@@ -1,0 +1,46 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body style="margin:0">
+<canvas id="c" width="1200" height="900"></canvas>
+<script src="../src/js/vendor/three-bundle.js"></script>
+<script src="../src/js/util.js"></script>
+<script src="../src/js/character.js"></script>
+<script src="../src/js/char3d.js"></script>
+<script>
+  /* render a VRM (full body + face close-up) with the app's lighting; pose via the app's pose system */
+  window.stageTest = async (assetDir) => {
+    window.haru = { readAsset: async (rel) => new Uint8Array(await (await fetch(assetDir + '/' + rel.split('/').pop())).arrayBuffer()) };
+    const canvas = document.getElementById('c');
+    const st = new H.CharStage(canvas, { bg: '#f3f1ec' });
+    await st.setModel({ model: 'shibu', accessory: 'headphones', accent: '#ffcf6b' });
+    const log = [];
+    for (let k = 0; k < 90; k++) {
+      try { st.render(1 / 60, { t: k / 60, act: 'idle', emo: 'neutral', blink: 1, look: { x: 0, y: 0 } }, 300, 340, 0); }
+      catch (e) { log.push('ERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]); break; }
+    }
+    const ua = st.char.b('leftUpperArm');
+    log.push('meta ' + JSON.stringify(st.char.vrm.meta.metaVersion) + ' ua ' + ua.quaternion.toArray().map((v) => v.toFixed(2)).join(','));
+    return log;
+  };
+  window.shootVrm = async (url, act) => {
+    const T = THREE;
+    const canvas = document.getElementById('c');
+    const r = new T.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+    r.setSize(1200, 900, false); r.outputColorSpace = T.SRGBColorSpace;
+    const scene = new T.Scene(); scene.background = new T.Color('#e9e4dc');
+    scene.add(new T.HemisphereLight('#ffffff', '#b9a68f', 1.6));
+    const sun = new T.DirectionalLight('#fff1dc', 2); sun.position.set(1, 3, 3); scene.add(sun);
+    const buf = await (await fetch(url)).arrayBuffer();
+    const c = await H.VrmCharacter.fromBuffer(buf);
+    scene.add(c.root);
+    c.setAccessory({ accessory: 'headphones', accent: '#ffcf6b' });
+    for (let k = 0; k < 60; k++) c.update(1 / 30, { t: 1 + k / 30, act: act || 'idle', emo: 'neutral', blink: 1, look: { x: 0, y: 0 }, seated: act === 'type', seatH: 0.5 });
+    const hp = c.headWorld(new T.Vector3());
+    const out = [];
+    const cam = new T.PerspectiveCamera(30, 4 / 3, 0.05, 50);
+    cam.position.set(0.9, hp.y * 0.6, 2.9); cam.lookAt(0, hp.y * 0.5, 0); r.render(scene, cam); out.push(canvas.toDataURL('image/png'));
+    cam.position.set(3.0, hp.y * 0.6, 0.2); cam.lookAt(0, hp.y * 0.5, 0); r.render(scene, cam); out.push(canvas.toDataURL('image/png'));
+    cam.fov = 24; cam.position.set(0.25, hp.y - 0.12, hp.z + 0.75); cam.lookAt(0, hp.y - 0.18, 0); cam.updateProjectionMatrix(); r.render(scene, cam); out.push(canvas.toDataURL('image/png'));
+    return out;
+  };
+</script>
+</body></html>

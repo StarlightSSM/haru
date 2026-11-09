@@ -67,7 +67,10 @@ main { position: absolute; top: var(--tb-h); left: 0; right: 0; bottom: 0; }
 .chip.whisper { border-color: var(--pink); color: var(--pink); }
 
 /* ---------- room ---------- */
-#room-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: default; }
+#room-canvas, #room3d-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: default; touch-action: none; }
+#room3d-canvas.grab { cursor: grabbing; }
+#room3d-canvas.hover-pet { cursor: pointer; }
+#room3d-canvas.splash-armed { cursor: crosshair; }
 #room-canvas.grab { cursor: grabbing; }
 #room-canvas.hover-pet { cursor: pointer; }
 #room-canvas.splash-armed { cursor: crosshair; }
@@ -388,3 +391,13 @@ html.mobile .tb-tools { padding-right: 10px; }
 .tool span { white-space: nowrap; }
 @media (max-width: 900px) { .tool { width: auto; min-width: 54px; padding: 0 6px; } }
 
+
+/* 3D model picker */
+.model-pick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.model-card { border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.model-card.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.model-card b { font-size: 12px; }
+.model-card small { font-size: 10px; color: var(--muted); line-height: 1.2; }
+.mthumb { width: 100%; aspect-ratio: 1; border-radius: 7px; object-fit: cover; background: var(--faint); display: grid; place-items: center; font: 600 18px var(--mono); color: var(--muted); }
+.mthumb.plus { font-size: 30px; }
+@media (max-width: 900px) { .model-pick { grid-template-columns: repeat(2, 1fr); } }

@@ -228,6 +228,7 @@
       const base = this.state === 'break' ? H.CAMERAS.nook : H.CAMERAS[pi.ph.cam] || H.CAMERAS.wide;
       const cyc = Math.floor(this.elapsed / 12000) % 4;
       const want = cyc === 3 ? H.CAMERAS.wide : base;
+      this.recCamName = cyc === 3 ? 'wide' : this.state === 'break' ? 'nook' : (pi.ph.cam === 'desk' && cyc === 1 && app.room.is3D ? 'shoulder' : pi.ph.cam);
       const k = 1 - Math.exp(-dt * 1.5);
       this.recCam.x += (want.x - this.recCam.x) * k; this.recCam.y += (want.y - this.recCam.y) * k;
       this.recCam.z += (Math.min(want.z, 2.2) - this.recCam.z) * k;
@@ -238,7 +239,7 @@
       const ctx = this.recCanvas.getContext('2d');
       const d = new Date();
       H.drawProcessFrame(ctx, 1280, 720, {
-        room: app.room, pet: app.petRenderState(), painter: app.painter, song: this.song, cam: this.recCam,
+        room: app.room, pet: app.petRenderState(), painter: app.painter, song: this.song, cam: this.recCam, camName: this.recCamName,
         playStep: app.audio.playStep, reveal: this.reveal, petName: app.settings.petName,
         phaseKo: this.state === 'break' ? '쉬는 중' : pi.ph.ko, progress: this.progress,
         date: H.dateKey(d), clock: `${H.pad2(d.getHours())}:${H.pad2(d.getMinutes())}`,

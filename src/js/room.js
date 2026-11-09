@@ -50,6 +50,7 @@
     }
     return [SKY[0][1], SKY[0][2]];
   }
+  H.skyColors = skyAt;
   H.daylight = function (h) {
     if (h < 5 || h > 21) return 0;
     if (h < 7.5) return (h - 5) / 2.5;

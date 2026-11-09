@@ -7,10 +7,11 @@
   "author": "sumin",
   "license": "UNLICENSED",
   "scripts": {
-    "start": "electron .",
-    "fast": "electron . --fast",
+    "build:3d": "node tools/build-3d.js",
+    "start": "node tools/build-3d.js && electron .",
+    "fast": "node tools/build-3d.js && electron . --fast",
     "icon": "electron tools/make-icon.js",
-    "dist": "electron-builder --win nsis",
+    "dist": "node tools/build-3d.js && electron-builder --win nsis",
     "mobile:web": "node tools/build-web.js",
     "android": "powershell -ExecutionPolicy Bypass -File tools/build-android.ps1",
     "android:release": "powershell -ExecutionPolicy Bypass -File tools/build-android.ps1 -Release",
@@ -30,9 +31,12 @@
     "mp4-muxer": "5.2.2"
   },
   "devDependencies": {
+    "@pixiv/three-vrm": "^3.5.5",
+    "three": "^0.187.0",
     "@capacitor/cli": "^8.6.0",
     "electron": "38.4.0",
-    "electron-builder": "26.0.12"
+    "electron-builder": "26.0.12",
+    "esbuild": "^0.28.2"
   },
   "build": {
     "appId": "com.sumin.haru",

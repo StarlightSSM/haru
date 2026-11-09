@@ -16,6 +16,7 @@
     { id: 'ribbon', ko: '리본' }, { id: 'flower', ko: '꽃' }, { id: 'scarf', ko: '목도리' }, { id: 'none', ko: '없음' },
   ];
   H.DEFAULT_CHARACTER = {
+    model: 'shibu',
     species: 'cat', hairStyle: 'bob', outfit: 'hoodie', accessory: 'headphones',
     skin: '#fbe3d3', hair: '#3d3557', eye: '#2b2840', cloth: '#7d8cff', accent: '#ffcf6b', cheek: true, voice: 1.0,
   };

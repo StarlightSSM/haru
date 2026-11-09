@@ -6,6 +6,7 @@ const root = path.join(__dirname, '..');
 const src = path.join(root, 'src');
 const www = path.join(root, 'www');
 
+require('./build-3d.js');
 fs.rmSync(www, { recursive: true, force: true });
 fs.mkdirSync(path.join(www, 'lib'), { recursive: true });
 

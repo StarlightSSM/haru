@@ -178,7 +178,7 @@ VS Code 터미널에서는 `ELECTRON_RUN_AS_NODE`가 설정돼 있을 수 있으
 
 | 이름 | 용도 | 출처 주소 | 라이선스 | 비고 |
 |---|---|---|---|---|
-| lamejs 1.2.1 | MP3 인코딩 (`recorder.js`, `index.html`) | https://registry.npmjs.org/lamejs/1.2.1 | LGPL-3.0 | 배포 시 LGPL 고지 조건 확인 필요 (법적 판단 보류) |
+| lamejs 1.2.1 | MP3 인코딩 (`src/js/recorder.js`, `src/index.html`, 빌드 시 `tools/build-web.js`가 복사) | https://registry.npmjs.org/lamejs/1.2.1 | LGPL-3.0 | 배포 시 LGPL 고지 조건 확인 필요 (법적 판단 보류) |
 | mp4-muxer 5.2.2 | MP4 타임랩스 (`recorder.js`) | https://registry.npmjs.org/mp4-muxer/5.2.2 | MIT | npm 표기: 이 패키지는 Mediabunny로 대체 권고 |
 | three 0.187.0 | 3D 방·캐릭터 (`vendor/three-bundle.js`) | https://registry.npmjs.org/three/0.187.0 | MIT | |
 | @pixiv/three-vrm 3.5.5 | VRM 로더 | https://registry.npmjs.org/@pixiv/three-vrm/3.5.5 | MIT | |

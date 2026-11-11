@@ -168,6 +168,7 @@ VS Code 터미널에서는 `ELECTRON_RUN_AS_NODE`가 설정돼 있을 수 있으
 
 - 확인 날짜: 2026-11-11 (아래 주소는 모두 이 날짜에 열람하거나 조회했습니다)
 - 범위: 앱 코드(`src/`)·의존성(`package.json`)·번들 에셋에서 실제로 쓰는 외부 자원만 적었습니다. 연구 문서에 조사만 되고 앱에 들어 있지 않은 모델·데이터셋(MusicGen, text2midi, Stable Audio Open, AudioLDM 2, MidiCaps, EMOPIA, MusicCaps 등)은 저장소 검색 결과 0건이라 제외했습니다.
+
 ### 번들 에셋 (배포물에 포함)
 
 | 이름 | 종류 | 출처 주소 | 라이선스 | 확인 내용 | 비고 |

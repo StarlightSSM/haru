@@ -5,7 +5,7 @@
   "description": "매일 세상을 듣고 음악과 그림을 만드는 나만의 아틀리에 펫",
   "main": "main.js",
   "author": "sumin",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "scripts": {
     "build:3d": "node tools/build-3d.js",
     "start": "node tools/build-3d.js && electron .",

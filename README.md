@@ -164,10 +164,10 @@ VS Code 터미널에서는 `ELECTRON_RUN_AS_NODE`가 설정돼 있을 수 있으
 
 ## 차용한 외부 자원의 라이선스
 
+우리 라이선스: Apache-2.0 (LICENSE 파일)
+
 - 확인 날짜: 2026-11-11 (아래 주소는 모두 이 날짜에 열람하거나 조회했습니다)
 - 범위: 앱 코드(`src/`)·의존성(`package.json`)·번들 에셋에서 실제로 쓰는 외부 자원만 적었습니다. 연구 문서에 조사만 되고 앱에 들어 있지 않은 모델·데이터셋(MusicGen, text2midi, Stable Audio Open, AudioLDM 2, MidiCaps, EMOPIA, MusicCaps 등)은 저장소 검색 결과 0건이라 제외했습니다.
-- 우리 라이선스: (대표님 결정 대기)
-
 ### 번들 에셋 (배포물에 포함)
 
 | 이름 | 종류 | 출처 주소 | 라이선스 | 확인 내용 | 비고 |
@@ -193,6 +193,7 @@ VS Code 터미널에서는 `ELECTRON_RUN_AS_NODE`가 설정돼 있을 수 있으
 | electron 38.4.0 | https://registry.npmjs.org/electron/38.4.0 | MIT | Windows 설치 파일에 Electron 본체와 Chromium 등 하위 자원이 들어가므로 배포물에 포함됨. 하위 고지 파일 원문은 미확인 |
 | electron-builder 26.0.12 | https://registry.npmjs.org/electron-builder/26.0.12 | MIT | |
 | esbuild 0.28.2 | https://registry.npmjs.org/esbuild/0.28.2 | MIT | |
+| @capacitor/cli 8.6.0 | https://registry.npmjs.org/@capacitor/cli/8.6.0 | MIT | devDependencies(`^8.6.0`). package-lock 의 `"dev": true` 로 개발 전용 확인. 앱 코드(`src/`)·저장소 전체 검색에서 참조 없음(package.json·lock 외 0건) |
 
 ### 런타임 데이터 출처 (외부 API·피드)
 

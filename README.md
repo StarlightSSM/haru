@@ -161,3 +161,56 @@ npm run android      # 안드로이드 APK → android/app/build/outputs/apk/deb
 모바일 코드는 `src/` 를 그대로 쓰고, `tools/build-web.js` 가 `www/` 를 만들면서 `src/js/platform-mobile.js` (Capacitor 연결층)를 끼워 넣어요.
 VS Code 터미널에서는 `ELECTRON_RUN_AS_NODE`가 설정돼 있을 수 있으니 먼저 `Remove-Item Env:ELECTRON_RUN_AS_NODE`.
 `tools/test-main.js`: 작곡·렌더·MP3·MP4 성능 측정용 하네스.
+
+## 차용한 외부 자원의 라이선스
+
+- 확인 날짜: 2026-11-11 (아래 주소는 모두 이 날짜에 열람하거나 조회했습니다)
+- 범위: 앱 코드(`src/`)·의존성(`package.json`)·번들 에셋에서 실제로 쓰는 외부 자원만 적었습니다. 연구 문서에 조사만 되고 앱에 들어 있지 않은 모델·데이터셋(MusicGen, text2midi, Stable Audio Open, AudioLDM 2, MidiCaps, EMOPIA, MusicCaps 등)은 저장소 검색 결과 0건이라 제외했습니다.
+- 우리 라이선스: (대표님 결정 대기)
+
+### 번들 에셋 (배포물에 포함)
+
+| 이름 | 종류 | 출처 주소 | 라이선스 | 확인 내용 | 비고 |
+|---|---|---|---|---|---|
+| Sendagaya Shibu (`shibu.vrm`), Vivi (`vivi.vrm`) | 3D 캐릭터 모델 | https://github.com/madjin/vrm-samples (README의 CC0 models 절), https://creativecommons.org/publicdomain/zero/1.0/ | CC0 1.0 | 두 파일의 VRM 메타데이터 `licenseName: CC0`, `commercialUssageName: Allow`를 직접 읽음 | 미확인: LICENSE.md가 적은 `vroid/beta/` 경로는 열지 않음. AvatarSample_A·B·C는 포함하지 않음 |
+
+### 런타임 의존성 (배포물에 포함)
+
+| 이름 | 용도 | 출처 주소 | 라이선스 | 비고 |
+|---|---|---|---|---|
+| lamejs 1.2.1 | MP3 인코딩 (`recorder.js`, `index.html`) | https://registry.npmjs.org/lamejs/1.2.1 | LGPL-3.0 | 배포 시 LGPL 고지 조건 확인 필요 (법적 판단 보류) |
+| mp4-muxer 5.2.2 | MP4 타임랩스 (`recorder.js`) | https://registry.npmjs.org/mp4-muxer/5.2.2 | MIT | npm 표기: 이 패키지는 Mediabunny로 대체 권고 |
+| three 0.187.0 | 3D 방·캐릭터 (`vendor/three-bundle.js`) | https://registry.npmjs.org/three/0.187.0 | MIT | |
+| @pixiv/three-vrm 3.5.5 | VRM 로더 | https://registry.npmjs.org/@pixiv/three-vrm/3.5.5 | MIT | |
+| @anthropic-ai/sdk 1.6.0 | AI 일기 (API 키를 넣은 경우만) | https://registry.npmjs.org/@anthropic-ai/sdk/1.6.0 | Apache-2.0 | |
+| @capacitor/core, android, ios 8.6.0 | 모바일 연결층 | https://registry.npmjs.org/@capacitor/core/8.6.0 (android·ios 동일 형식) | MIT | |
+| @capacitor/app 8.1.2, filesystem 8.1.5, local-notifications 8.3.1, preferences 8.0.1, share 8.0.3 | Capacitor 플러그인 | https://registry.npmjs.org/@capacitor/[이름]/[버전] | MIT | |
+
+### 빌드 도구
+
+| 이름 | 출처 주소 | 라이선스 | 비고 |
+|---|---|---|---|
+| electron 38.4.0 | https://registry.npmjs.org/electron/38.4.0 | MIT | Windows 설치 파일에 Electron 본체와 Chromium 등 하위 자원이 들어가므로 배포물에 포함됨. 하위 고지 파일 원문은 미확인 |
+| electron-builder 26.0.12 | https://registry.npmjs.org/electron-builder/26.0.12 | MIT | |
+| esbuild 0.28.2 | https://registry.npmjs.org/esbuild/0.28.2 | MIT | |
+
+### 런타임 데이터 출처 (외부 API·피드)
+
+| 출처 | 주소 | 이용 조건 | 상태 |
+|---|---|---|---|
+| Google 뉴스 RSS | https://news.google.com/rss | 약관 미열람 | 미확인 |
+| Google 트렌드 RSS | https://trends.google.com/trending/rss | 약관 미열람 | 미확인 |
+| BBC World RSS | https://feeds.bbci.co.uk/news/world/rss.xml | https://www.bbc.co.uk/usingthebbc/terms-of-use/ (2022-09-19 갱신본). 개인이 RSS 메타데이터를 가져가는 것을 금지하고, 업무 이용은 사전 허락과 비용이 필요할 수 있음 | 원문 확인. 공개 배포 시 제한 검토 필요 |
+| Wikimedia 추천 문서 API | https://api.wikimedia.org/feed/v1/wikipedia/ | 문서 텍스트는 CC BY-SA 4.0 (https://en.wikipedia.org/wiki/Wikipedia:Reusing_Wikipedia_content). API 데이터 자체의 조건은 미열람. 앱은 문서 제목만 사용 (`world.js`) | 부분 확인 |
+| Open-Meteo 날씨·지오코딩 | https://api.open-meteo.com, https://geocoding-api.open-meteo.com | https://open-meteo.com/en/terms: 무료 API는 비상업 전용, 데이터는 CC-BY 4.0, 일 1만 호출 제한. 구독·광고가 붙으면 상업 이용으로 봄 | 원문 확인. 상업 전환 시 유료 플랜 필요 |
+| Hacker News 프론트페이지 (hnrss) | https://hnrss.org/frontpage | hnrss.org 조건 미열람. HN API 저장소(https://github.com/HackerNews/API)는 사이드바에 MIT 표기 (LICENSE 원문 미열람) | 미확인 |
+
+### 미확인 · 다음 할 일
+
+- Google 뉴스·트렌드 RSS 약관 열람
+- BBC RSS와 Open-Meteo의 상업 이용 판단 (대표님 결정)
+- lamejs의 LGPL 고지 방식, Electron 설치물의 하위 고지 파일 원문
+- `vroid/beta/` 경로의 원문 확인
+- Wikimedia API 데이터 조건, hnrss.org 조건
+
+이 절은 확인한 내용을 옮긴 기록입니다. 법적 판단은 하지 않았습니다.

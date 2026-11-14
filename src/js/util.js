@@ -106,7 +106,7 @@ window.H = window.H || {};
     if (attrs) for (const k in attrs) {
       const v = attrs[k];
       if (k === 'class') e.className = v;
-      else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+      else if (k === 'style' && typeof v === 'object') { for (const sk in v) { if (sk.startsWith('--')) e.style.setProperty(sk, v[sk]); else e.style[sk] = v[sk]; } }
       else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
       else if (k === 'html') e.innerHTML = v;
       else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? '' : v);

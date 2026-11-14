@@ -270,6 +270,15 @@
       desc: '‘따다닥 따다닥’ 6/8의 경쾌한 도약. 펍에서 발 구르며 듣는 음악이에요.',
     },
     {
+      id: 'jfusion', name: 'J-Fusion OST', ko: '청량 퓨전', region: '일본 · 한국 · 게임 OST', timeSig: '4/4', steps: 16, beatSteps: 4,
+      bpm: [140, 172], swing: 0.5, scales: ['major', 'lydian', 'mixolydian', 'dorian'], seventh: true,
+      progs: [[4, 5, 3, 6], [4, 5, 6, 1], [2, 5, 1, 6], [6, 4, 5, 1], [4, 3, 2, 5]],
+      chordPat: 'x..x..x...x..x..', bass: 'fusion', lead: 'piano', chord: 'epiano', pad: 'strings',
+      drums: { k: 'X.....x...x.....', s: '....X.......X...', h: 'x.xox.xox.xox.xo', o: '..............x.', c: '............x...' },
+      vibe: { v: 0.75, a: 0.75 }, fx: { lofi: 0.0, reverb: 0.22 }, start: false,
+      desc: '파란 하늘 아래 학교 옥상을 달리는 느낌. 4-5-3-6 진행, 당김음 코드, 통통 튀는 베이스와 반짝이는 피아노.',
+    },
+    {
       id: 'ambient', name: 'Ambient', ko: '앰비언트', region: '영국', timeSig: '자유', steps: 16, beatSteps: 4,
       bpm: [56, 70], swing: 0.5, scales: ['lydian', 'major', 'pentaMajor', 'dorian'], seventh: true,
       progs: [[1, 4, 1, 4], [1, 5, 6, 4], [4, 1, 5, 6]],
@@ -306,7 +315,8 @@
     { re: /영국|britain|런던|london|uk\b/i, ids: ['dnb'] },
     { re: /애틀랜타|래퍼|힙합|hip.?hop|rapper/i, ids: ['trap', 'boombap'] },
     { re: /아일랜드|ireland|스코틀랜드|scotland/i, ids: ['celtic'] },
-    { re: /레트로|80년대|게임|game|네온/i, ids: ['synthwave'] },
+    { re: /레트로|80년대|네온/i, ids: ['synthwave'] },
+    { re: /게임|game|애니|anime|학교|청춘|여름/i, ids: ['jfusion'] },
     { re: /우주|space|nasa|명상|자연|숲|ocean|바다/i, ids: ['ambient'] },
   ];
 

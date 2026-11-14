@@ -14,15 +14,18 @@
     return r.weighted(g.scales, (s) => 1 / (0.4 + Math.abs((BRIGHT[s] ?? 0) - target)) + 0.15);
   };
 
-  H.chooseGenre = function (mood, hint, known, request, r) {
+  H.chooseGenre = function (mood, hint, known, request, r, style) {
     if (request && H.GENRE[request]) return request;
     const ids = Object.keys(known || {}).filter((id) => H.GENRE[id]);
+    /* a style lets the pet wander into its favourite genres even before it "knows" them */
+    if (style) Object.keys(style.genres || {}).forEach((id) => { if (H.GENRE[id] && style.genres[id] >= 1.4 && !ids.includes(id)) ids.push(id); });
     const pool = ids.length ? ids : H.GENRES.filter((g) => g.start).map((g) => g.id);
     return r.weighted(pool, (id) => {
       const g = H.GENRE[id];
       const d = Math.hypot((g.vibe.v - mood.valence) * 0.9, (g.vibe.a - mood.arousal) * 1.3);
-      const fam = known[id] || 0.2;
-      return (1.2 / (0.25 + d)) * (0.6 + fam * 0.6) + (hint[id] || 0) * 0.8;
+      const fam = (known && known[id]) || 0.2;
+      const pull = style ? (style.genres[id] ? 1 + style.genres[id] * 1.2 : 0.3) : 1;
+      return ((1.2 / (0.25 + d)) * (0.6 + fam * 0.6) + (hint[id] || 0) * 0.8) * pull;
     });
   };
 
@@ -39,7 +42,13 @@
     const L = iv.length;
     const parent = H.SCALES[sc.parent || scaleName].iv.length === 7 ? H.SCALES[sc.parent || scaleName].iv : H.SCALES.major.iv;
     const root = plan.root ?? (52 + Math.floor(r() * 9)); /* E3..C4 */
-    const bpm = Math.round(H.lerp(g.bpm[0], g.bpm[1], H.clamp(mood.arousal * 0.8 + r() * 0.35)));
+    const style = H.STYLE && H.STYLE[plan.styleId];
+    let bpm = Math.round(H.lerp(g.bpm[0], g.bpm[1], H.clamp(mood.arousal * 0.8 + r() * 0.35)));
+    if (style && style.bpm) {
+      /* lean into the style's tempo window without leaving the genre's feel entirely */
+      const lo = Math.max(style.bpm[0], g.bpm[0] * 0.8), hi = Math.min(style.bpm[1], g.bpm[1] * 1.25);
+      if (lo <= hi) bpm = Math.round(H.clamp(bpm, lo, hi));
+    }
     const steps = g.steps, beatSteps = g.beatSteps;
     const beats = steps / beatSteps;
     const barSec = beats * 60 / bpm;
@@ -94,6 +103,15 @@
       fx: Object.assign({ lofi: 0.2, reverb: 0.25 }, g.fx), notes: [], drums: [], motifs: [], density,
       drumGenre: g.id, userNotes: 0,
     };
+    if (style) {
+      song.style = style.id; song.styleKo = style.ko;
+      song.insts = H.styleInsts(style, g, song.insts, r);
+      song.fx = Object.assign(song.fx, style.fx);
+      song.lofiOk = style.lofiOk;
+      song.kit = Object.assign({}, H.DEFAULT_KIT, style.kit);
+      if (style.seats) song.seats = style.seats;
+    }
+    if (!song.kit && H.DEFAULT_KIT) song.kit = Object.assign({}, H.DEFAULT_KIT);
     const N = song.notes, D = song.drums;
     const bassRoot = (pc) => { let n = 36 + pc; if (n < 38) n += 12; return n; };
 
@@ -110,7 +128,7 @@
           c.notes.forEach((p) => N.push({ s: base + h, d: dur, p, v: 0.5 + (h === 0 ? 0.1 : 0), t: 'chord' }));
         });
       }
-      if (g.pad) {
+      if (song.insts.pad) {
         const padNotes = g.pad === 'tanpura' ? [bassRoot(mod(root, 12)) + 12, bassRoot(mod(root, 12)) + 19] : c.notes.map((p) => p + 12);
         if (g.pad === 'tanpura') { if (b % 2 === 0) padNotes.forEach((p) => N.push({ s: base, d: steps * 2, p, v: 0.35, t: 'pad' })); }
         else padNotes.forEach((p) => N.push({ s: base, d: steps, p, v: 0.32, t: 'pad' }));
@@ -158,6 +176,7 @@
           }
           break;
         }
+        case 'fusion': put(0, R, 2, 0.85); put(3, R, 1, 0.55); put(4, O, 1, 0.6); put(6, R, 2, 0.75); put(8, F, 2, 0.75); put(10, R, 1, 0.55); put(11, O, 1, 0.6); put(14, NR, 2, 0.7); break;
         case 'pedal': for (let i = 0; i < steps; i += 2) put(i, R, 2, (i % 4 === 0) ? 0.8 : 0.6); break;
         case 'sub': put(0, R, Math.round(steps * 0.6), 0.9); if (r.chance(0.5)) put(10, r.chance(0.5) ? R : F, 6, 0.75); break;
         default: put(0, R, steps / 2);
@@ -191,6 +210,40 @@
       }
     }
     song.drums = D.filter((d) => d.s < song.totalSteps);
+
+    /* ----- style layers: arpeggio & counter-melody ----- */
+    if (song.insts.arp && style) {
+      const A = style.arp || { rate: 2, shape: 'up', oct: 12, vel: 0.4 };
+      for (let b = 0; b < bars; b++) {
+        const sec = sections.find((x) => b >= x.start && b < x.start + x.len);
+        if (sec.name === 'intro' && b < sec.start + sec.len - 1 && A.rate < 4) continue;
+        if (sec.name === 'outro' && b >= bars - 1) continue;
+        const c = chordAt[b];
+        const tones = c.notes.map((p) => p + (A.oct || 0));
+        const seq = A.shape === 'updown' ? tones.concat(tones.slice(1, -1).reverse())
+          : A.shape === 'broken' ? [tones[0], tones[2] ?? tones[1], tones[1], tones[3] ?? tones[0] + 12, tones[0] + 12, tones[2] ?? tones[1], tones[1], tones[2] ?? tones[0]]
+            : A.shape === 'chop' ? [tones[1], tones[2] ?? tones[1], tones[1], tones[0] + 12]
+              : tones.concat([tones[0] + 12]);
+        let k = 0;
+        for (let i = 0; i < steps; i += A.rate) {
+          if (A.shape === 'chop' && (i / A.rate) % 2 === 0 && r.chance(0.5)) { k++; continue; }
+          const on = i % beatSteps === 0;
+          N.push({ s: b * steps + i, d: A.shape === 'chop' ? 1 : Math.max(1, A.rate * (A.rate >= 4 ? 2 : 1)), p: seq[k % seq.length], v: H.clamp((A.vel || 0.4) * (on ? 1.15 : 0.9) + (r() - 0.5) * 0.08), t: 'arp' });
+          k++;
+        }
+      }
+    }
+    if (song.insts.counter) {
+      sections.forEach((sec) => {
+        if (!(sec.name.startsWith('B') || sec.name === 'C' || sec.name === 'D' || sec.name === 'A3' || sec.name === 'A4')) return;
+        for (let b = sec.start; b < sec.start + sec.len; b += 2) {
+          const c = chordAt[b];
+          const p = (c.notes[1] ?? c.notes[0]) + 12;
+          N.push({ s: b * steps, d: steps * 2 - 1, p, v: 0.42, t: 'counter' });
+          if (r.chance(0.5)) N.push({ s: b * steps + steps + beatSteps * 2, d: beatSteps * 2, p: (c.notes[2] ?? p) + 12, v: 0.36, t: 'counter' });
+        }
+      });
+    }
 
     /* ----- melody: motifs from keywords ----- */
     const words = (plan.keywords || []).filter(Boolean).slice(0, 4);
@@ -267,7 +320,7 @@
     const totalBars = bars;
     let acc = 0;
     const secSpan = sections.map((s) => { const a = acc; acc += s.len / totalBars; return [a, acc]; });
-    const layerWindow = { chord: [0, 0.25], pad: [0.05, 0.3], bass: [0.25, 0.45], drum: [0.45, 0.62], lead: [0.62, 1] };
+    const layerWindow = { chord: [0, 0.25], pad: [0.05, 0.3], bass: [0.25, 0.45], drum: [0.45, 0.62], arp: [0.5, 0.65], lead: [0.62, 1], counter: [0.8, 1] };
     const revFor = (s, layer) => {
       const bar = Math.floor(s / steps);
       const si = sections.findIndex((x) => bar >= x.start && bar < x.start + x.len);

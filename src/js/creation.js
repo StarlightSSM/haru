@@ -109,12 +109,22 @@
       const app = this.app, w = this.world;
       const r = H.rng(this.seed);
       const st = app.state;
-      const genreId = opts.genreId || H.chooseGenre(w.mood, w.hint, st.known, st.request, r);
+      /* the pet picks a sound by its own taste first, then a rhythm that suits it */
+      const fixedStyle = app.settings.creation.musicStyle && app.settings.creation.musicStyle !== 'auto' ? app.settings.creation.musicStyle : null;
+      /* always draw from the seeded rng (keeps a resumed session identical), then honour a saved choice */
+      let choice = H.chooseStyle(w.mood, Object.assign({}, H.DEFAULT_TASTE, st.taste), { r, request: opts.styleId ? null : st.styleRequest || fixedStyle, recent: (st.history || []).map((h) => h.style).filter(Boolean) });
+      if (opts.styleId && H.STYLE[opts.styleId]) choice = { id: opts.styleId, why: 'resume' };
+      if (st.styleRequest && choice.id === st.styleRequest) { choice.why = 'request'; st.styleRequest = null; }
+      if (fixedStyle && choice.id === fixedStyle && choice.why === 'request') choice.why = 'love';
+      this.styleChoice = choice;
+      const musicStyle = H.STYLE[choice.id];
+      const genreId = opts.genreId || H.chooseGenre(w.mood, w.hint, st.known, st.request, r, musicStyle);
       if (st.request && genreId === st.request) st.request = null;
       const keywords = w.keywords.slice(0, 4).map((k) => k.w);
-      this.plan = { seed: this.seed, genreId, mood: w.mood, keywords, seconds: app.settings.creation.songSeconds, scale: opts.scale, root: opts.root };
+      this.plan = { seed: this.seed, genreId, styleId: choice.id, mood: w.mood, keywords, seconds: app.settings.creation.songSeconds, scale: opts.scale, root: opts.root };
       this.song = H.compose(this.plan);
       this.plan.scale = this.song.scaleName; this.plan.root = this.song.root;
+      H.samples && H.samples.ensure(H.songSamples(this.song)).catch(() => {});
       this.song.title = opts.title || H.makeTitle(w, this.seed);
       const style = H.chooseArtStyle(w.mood, r, app.settings.creation.artStyle);
       const palette = H.makePalette(w.mood, w.cats, this.seed);
@@ -193,6 +203,8 @@
           if (!this.world) return;
           const g = H.GENRE[this.song.genreId];
           app.say(H.fillLine('think', { mood: H.moodWords(this.world.mood).ko, genre: g.ko, kw: (this.world.keywords[0] || {}).w, kw2: (this.world.keywords[1] || {}).w }));
+          /* then explain the taste pick */
+          if (this.styleChoice && this.styleChoice.why !== 'resume') setTimeout(() => { if (this.state === 'running') app.say(H.styleReason(this.styleChoice, this.world.mood), { duration: 6 }); }, 5200);
         });
       }
       if (ph.id === 'compose') {
@@ -358,10 +370,11 @@
           mp4 = await this.timelapse.finish(buf);
         }
         step('save', 0.9);
-        const diaryMd = `# ${this.song.title}\n\n_${this.date} · ${app.settings.petName}_\n\n${diary.diary}\n\n---\n\n- 장르: ${this.song.genreKo} (${H.GENRE[this.song.genreId].region})\n- 조성: ${this.song.keyName} ${this.song.scaleKo} · ${this.song.bpm} BPM · ${this.song.timeSig}\n- 그림: ${styleKo}\n- 오늘의 키워드: ${w.keywords.slice(0, 12).map((k) => k.w).join(', ')}\n- 기분: ${H.moodWords(w.mood).ko} (valence ${w.mood.valence.toFixed(2)}, arousal ${w.mood.arousal.toFixed(2)})\n${w.weather ? `- 날씨: ${w.weather.ko} ${Math.round(w.weather.temp)}°C\n` : ''}\n## 오늘 읽은 소식\n\n${w.headlines.slice(0, 12).map((h) => `- ${h.title} _(${h.source})_`).join('\n')}\n`;
+        const diaryMd = `# ${this.song.title}\n\n_${this.date} · ${app.settings.petName}_\n\n${diary.diary}\n\n---\n\n- 장르: ${this.song.genreKo} (${H.GENRE[this.song.genreId].region})\n${this.song.styleKo ? `- 스타일: ${this.song.styleKo} — ${H.styleReason(this.styleChoice || { id: this.song.style, why: 'whim' }, w.mood)}\n- 악기: ${H.songInstKo(this.song)}\n` : ''}- 조성: ${this.song.keyName} ${this.song.scaleKo} · ${this.song.bpm} BPM · ${this.song.timeSig}\n- 그림: ${styleKo}\n- 오늘의 키워드: ${w.keywords.slice(0, 12).map((k) => k.w).join(', ')}\n- 기분: ${H.moodWords(w.mood).ko} (valence ${w.mood.valence.toFixed(2)}, arousal ${w.mood.arousal.toFixed(2)})\n${w.weather ? `- 날씨: ${w.weather.ko} ${Math.round(w.weather.temp)}°C\n` : ''}\n## 오늘 읽은 소식\n\n${w.headlines.slice(0, 12).map((h) => `- ${h.title} _(${h.source})_`).join('\n')}\n`;
         const record = {
           title: this.song.title, date: this.date, createdAt: Date.now(), extra: this.extra,
           genreId: this.song.genreId, genre: this.song.genre, genreKo: this.song.genreKo, region: H.GENRE[this.song.genreId].region,
+          musicStyle: this.song.style || null, musicStyleKo: this.song.styleKo || null, styleWhy: this.styleChoice ? this.styleChoice.why : null, insts: this.song.insts,
           key: this.song.keyName, scale: this.song.scaleKo, bpm: this.song.bpm, timeSig: this.song.timeSig, durationSec: Math.round(buf.duration),
           style: this.artPlan.style, styleKo, mood: w.mood, moodKo: H.moodWords(w.mood).ko, keywords: w.keywords.slice(0, 16).map((k) => k.w),
           headlines: w.headlines.slice(0, 12).map((h) => ({ title: h.title, source: h.source })), weather: w.weather,
@@ -404,14 +417,14 @@
       this.app.state.creation = {
         date: this.date, seed: this.seed, elapsed: this.elapsed, totalMs: this.totalMs, extra: this.extra,
         world: this.world ? Object.assign({}, this.world) : null,
-        genreId: this.plan && this.plan.genreId, scale: this.plan && this.plan.scale, root: this.plan && this.plan.root, title: this.song && this.song.title,
+        genreId: this.plan && this.plan.genreId, styleId: this.plan && this.plan.styleId, scale: this.plan && this.plan.scale, root: this.plan && this.plan.root, title: this.song && this.song.title,
         interventions: this.interventions, log: this.log,
       };
       this.app.saveState();
     }
 
     async resume(saved) {
-      await this.start({ seed: saved.seed, elapsed: saved.elapsed, world: saved.world, extra: saved.extra, log: saved.log, interventions: saved.interventions, genreId: saved.genreId, scale: saved.scale, root: saved.root, title: saved.title });
+      await this.start({ seed: saved.seed, elapsed: saved.elapsed, world: saved.world, extra: saved.extra, log: saved.log, interventions: saved.interventions, genreId: saved.genreId, styleId: saved.styleId, scale: saved.scale, root: saved.root, title: saved.title });
       this.date = saved.date;
       this.totalMs = saved.totalMs || this.totalMs;
       if (!saved.world) return;

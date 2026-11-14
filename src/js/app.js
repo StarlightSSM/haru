@@ -11,7 +11,7 @@
     mini: { enabled: true, mode: 'float', size: 1, opacity: 1, speed: 1, alwaysOnTop: true, bubble: true, showWhenMainVisible: false },
     sources: { googleNewsKR: true, googleNewsWorld: true, bbc: true, trendsKR: true, trendsUS: true, wikipedia: true, hackerNews: true, custom: [], weather: true, city: '서울', lat: 37.5665, lon: 126.978 },
     audio: { master: 0.8, music: 0.8, ambient: 0.5, sfx: 0.6, lofi: 0.3, voice: true, autoWeather: true, amb: { rain: 0, vinyl: 0.25, wind: 0, cafe: 0, fire: 0, waves: 0, night: 0, birds: 0, keys: 0.5 } },
-    creation: { songSeconds: 75, artStyle: 'auto', posterSize: 1600, video: true, videoFps: 30, videoAudio: true },
+    creation: { songSeconds: 75, musicStyle: 'auto', artStyle: 'auto', posterSize: 1600, video: true, videoFps: 30, videoAudio: true },
     visual: { theme: 'auto', camera: 'auto', showHud: true, reduceMotion: false, uiScale: 1, renderer: '3d' },
     ai: { enabled: false, model: 'claude-opus-5-5' },
   };
@@ -38,6 +38,7 @@
     const init = window.haru ? await window.haru.init() : { settings: {}, state: {}, fast: location.search.includes('fast') };
     app.settings = merge(DEFAULT_SETTINGS, init.settings || {});
     app.state = merge(H.DEFAULT_STATE, init.state || {});
+    app.state.taste = Object.assign({}, H.DEFAULT_TASTE, app.state.taste || {});
     app.fast = !!init.fast; app.hasKey = !!init.hasKey; app.version = init.version; app.versions = init.versions; app.shot = init.shot;
     app.mobile = !!init.mobile;
     if (app.mobile && !(init.settings && init.settings.creation)) { app.settings.creation.posterSize = 1200; app.settings.general.sessionMinutes = 6; }
@@ -254,13 +255,15 @@
     if (v === 'shop') renderShop();
     if (v === 'world') renderWorld();
     if (v === 'lab') renderLab();
+    if (v === 'taste') renderTaste();
+    if (v !== 'taste' && app.tastePreview) stopTastePreview(true);
     setTimeout(resizeAll, 0);
   }
 
   function onKey(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    const views = ['room', 'world', 'studio', 'lab', 'archive', 'shop'];
-    if (e.key >= '1' && e.key <= '6') setView(views[+e.key - 1]);
+    const views = ['room', 'world', 'studio', 'lab', 'taste', 'archive', 'shop'];
+    if (e.key >= '1' && e.key <= '7') setView(views[+e.key - 1]);
     if (e.key === 'm' || e.key === 'M') { app.muted = !app.muted; applyAudio(); }
     if (e.key === 'Escape') { closePop(); }
   }
@@ -426,6 +429,8 @@
         if (app.state.patsToday < 12) { pet.nudge('bond', 1); app.state.patsToday++; }
         pet.nudge('mood', 2);
         if (cr.active) cr.log.pats++;
+        /* a pat while its music is playing = "I like this sound" */
+        if (app.audio.playing && app.audio.song && app.audio.song.style && app.state.patsToday < 12) { H.nudgeTaste(app.state, app.audio.song.style, 0.012); if (app.view === 'taste') renderTaste(); }
         app.say(H.fillLine(creating && pet.stats.focus > 60 ? 'pet_pat_focus' : 'pet_pat'), { quiet: fromMini });
         break;
       }
@@ -688,7 +693,7 @@
     const g = H.GENRE[s.genreId];
     box.innerHTML = `<div class="box-lbl">NOW · ${H.escape(g.region)}</div><h3>${H.escape(s.title || '(제목 미정)')}</h3>
       <div class="kv"><span>장르</span><b>${g.ko} · ${g.name}</b><span>조성</span><b>${s.keyName} ${s.scaleKo}</b><span>박자</span><b>${s.timeSig} · ${s.bpm} BPM · swing ${Math.round((s.swing - 0.5) * 200)}%</b>
-      <span>악기</span><b>${[s.insts.lead, s.insts.chord, s.insts.bass].filter(Boolean).join(' / ')}</b><span>구성</span><b>${s.sections.map((x) => x.name).join(' → ')} (${s.bars}마디)</b>
+      ${s.styleKo ? `<span>스타일</span><b>${H.escape(s.styleKo)}</b>` : ''}<span>악기</span><b>${H.escape(H.songInstKo(s))}</b><span>구성</span><b>${s.sections.map((x) => x.name).join(' → ')} (${s.bars}마디)</b>
       <span>모티프</span><b>${s.motifs.slice(0, 3).map((m) => `'${H.escape(m.word)}' ${m.names.slice(0, 4).join(' ')}`).join('<br>')}</b></div>`;
   }
 
@@ -851,6 +856,87 @@
     document.querySelectorAll('#lab-grid .cell').forEach((c) => c.classList.toggle('play', +c.dataset.i === i));
   }
 
+  /* ================= Taste (music styles) ================= */
+  function tasteOf(id) { return H.clamp((app.state.taste || {})[id] ?? H.DEFAULT_TASTE[id] ?? 0.3); }
+  function likeWord(x) { return x > 0.8 ? '완전 좋아함' : x > 0.62 ? '좋아함' : x > 0.45 ? '괜찮음' : x > 0.28 ? '가끔' : '아직 낯섦'; }
+
+  function renderTaste() {
+    const head = $('taste-head'), grid = $('taste-grid');
+    if (!head || !grid) return;
+    const st = app.state;
+    const ranked = H.STYLES.slice().sort((a, b) => tasteOf(b.id) - tasteOf(a.id));
+    const fav = ranked[0];
+    const recent = (st.history || []).map((h) => h.style).filter(Boolean).slice(-6);
+    const name = app.settings.petName;
+    head.innerHTML = '';
+    head.append(
+      el('div', null, el('div', { class: 'lbl' }, 'TASTE · 음악 취향'), el('h2', null, `${H.josa(name, '은/는')} 요즘 ${fav.ko}에 빠져 있어요`),
+        el('div', { class: 'say' }, `작업할 때마다 기분과 취향으로 스타일을 스스로 골라요. 같이 들어주거나, 들으면서 쓰다듬어 주면 그 소리를 더 좋아하게 돼요.`)),
+      el('div', null, app.settings.creation.musicStyle !== 'auto' ? el('div', { class: 'hint' }, `설정에서 '${(H.STYLE[app.settings.creation.musicStyle] || {}).ko}'로 고정됨`) : null,
+        st.styleRequest ? el('div', { class: 'hint' }, `다음 곡 추천: ${H.STYLE[st.styleRequest].ko}`) : null),
+      el('div', { class: 'recent' }, recent.length ? `최근 고른 스타일 → ${recent.map((id) => (H.STYLE[id] || {}).ko || id).join(' · ')}` : '아직 이 취향으로 만든 곡이 없어요.'));
+    grid.innerHTML = '';
+    H.STYLES.forEach((s) => {
+      const t = tasteOf(s.id);
+      const playing = app.tastePreview === s.id;
+      const sampleInsts = ['lead', 'chord', 'arp', 'counter', 'bass'].map((k) => s.insts[k]).filter(Boolean).map((v) => H.instKo(Array.isArray(v) ? v[0] : v)).filter((v, i, a) => a.indexOf(v) === i);
+      grid.appendChild(el('div', { class: 'style-card' + (s === fav ? ' fav' : '') + (st.styleRequest === s.id ? ' req' : ''), style: { '--sc': s.color } },
+        el('h3', null, s.ko, el('small', null, s.en.toUpperCase()), s === fav ? el('span', { class: 'badge' }, '최애') : null),
+        el('p', null, s.desc),
+        el('div', { class: 'tags' }, ...s.tags.map((x) => el('span', null, x))),
+        el('div', { class: 'insts' }, '악기 · ' + sampleInsts.join(', ')),
+        el('div', { class: 'like' }, el('span', null, '좋아하는 정도'), el('div', { class: 'bar' }, el('i', { style: { width: Math.round(t * 100) + '%' } })), el('b', null, likeWord(t))),
+        el('div', { class: 'btns' },
+          el('button', { class: 'btn' + (playing ? ' primary' : ''), onclick: () => (playing ? stopTastePreview() : playTastePreview(s.id)) }, playing ? '■ 멈춤' : '▶ 같이 듣기'),
+          el('button', { class: 'btn', onclick: () => requestStyle(s.id) }, st.styleRequest === s.id ? '✓ 추천함' : '다음 곡에 추천'))));
+    });
+  }
+
+  async function playTastePreview(id) {
+    const cr = app.creation;
+    if (cr.state === 'running' && cr.phaseInfo && cr.phaseInfo.ph.id === 'compose') { H.toast('작곡 중엔 그 아이가 연주하고 있어요. 그림 그릴 때 들려주세요.'); return; }
+    const s = H.STYLE[id];
+    const genreId = Object.keys(s.genres).sort((a, b) => s.genres[b] - s.genres[a])[0];
+    const song = H.compose({ seed: H.hash('taste' + id), genreId, styleId: id, mood: { valence: s.vibe.v, arousal: s.vibe.a, tension: 0.2 }, keywords: ['하루', 'taste', '음악'], seconds: 36 });
+    song.title = s.ko;
+    app.tastePreview = id; app.tasteFrom = performance.now(); renderTaste();
+    H.toast('악기 녹음을 불러오는 중…');
+    await H.samples.ensure(H.songSamples(song)).catch(() => {});
+    if (app.tastePreview !== id) return;
+    if (app.labPlaying) stopLab();
+    app.audio.play(song, { repeat: false, lofi: app.settings.audio.lofi, onEnd: () => { if (app.tastePreview === id) stopTastePreview(); } });
+    app.pet.flash('listen', 4);
+  }
+  function stopTastePreview(silent) {
+    const id = app.tastePreview;
+    app.tastePreview = null;
+    app.audio.stop();
+    /* listening together for a while teaches it to like the sound */
+    if (id && performance.now() - app.tasteFrom > 8000) {
+      const key = 'taste' + id + H.dateKey();
+      app.lab.taught[key] = (app.lab.taught[key] || 0) + 1;
+      if (app.lab.taught[key] <= 2) {
+        const before = tasteOf(id);
+        H.nudgeTaste(app.state, id, 0.04);
+        app.pet.nudge('inspiration', 3);
+        if (!silent) app.say(before < 0.35 ? `${H.STYLE[id].ko}… 처음엔 낯설었는데 조금 좋아졌어.` : `${H.STYLE[id].ko}, 역시 좋다! 다음에 써먹어야지.`);
+        app.saveState();
+      }
+    }
+    const cr = app.creation;
+    if (cr.state === 'running' && cr.phaseInfo && cr.phaseInfo.ph.id === 'paint' && cr.song) app.audio.play(cr.song, { repeat: true, lofi: app.settings.audio.lofi });
+    if (app.view === 'taste') renderTaste();
+  }
+  function requestStyle(id) {
+    const st = app.state;
+    st.styleRequest = st.styleRequest === id ? null : id;
+    if (st.styleRequest) {
+      const t = tasteOf(id);
+      app.say(t > 0.5 ? `${H.STYLE[id].ko}? 좋아, 다음 곡은 그걸로 해볼게!` : `${H.STYLE[id].ko}… 잘 할 수 있을까? 그래도 해볼게.`);
+    }
+    app.saveState(); renderTaste();
+  }
+
   /* ================= Archive ================= */
   async function refreshArchive() {
     if (!window.haru) return;
@@ -878,7 +964,7 @@
         w.urls.mp4 ? el('video', { src: w.urls.mp4, controls: true, preload: 'metadata' }) : el('div', { class: 'hint' }, '이 작품은 녹화 영상이 없어요.')),
       el('div', null,
         el('h2', null, m.title),
-        el('div', { class: 'meta' }, `${m.date} · ${m.genreKo} (${m.region}) · ${m.key} ${m.scale} · ${m.bpm} BPM · ${m.timeSig} · ${m.styleKo} · ${m.moodKo}`),
+        el('div', { class: 'meta' }, `${m.date} · ${m.musicStyleKo ? m.musicStyleKo + ' · ' : ''}${m.genreKo} (${m.region}) · ${m.key} ${m.scale} · ${m.bpm} BPM · ${m.timeSig} · ${m.styleKo} · ${m.moodKo}`),
         el('audio', { src: w.urls.mp3, controls: true, preload: 'metadata' }),
         el('div', { class: 'btns' },
           app.mobile ? null : el('button', { class: 'btn', onclick: () => window.haru.openPath(w.path) }, '폴더 열기'),
@@ -940,7 +1026,9 @@
     if (!record.extra || st.lastWorkDate !== record.date) st.days++;
     st.lastWorkDate = record.date;
     st.known[record.genreId] = H.clamp(fam + 0.08);
-    st.history = (st.history || []).concat([{ date: record.date, keywords: record.keywords, genreId: record.genreId, title: record.title }]).slice(-30);
+    /* making something it's proud of makes it like that sound a little more */
+    if (record.musicStyle) H.nudgeTaste(st, record.musicStyle, 0.02 + (quality - 55) / 900);
+    st.history = (st.history || []).concat([{ date: record.date, keywords: record.keywords, genreId: record.genreId, style: record.musicStyle, title: record.title }]).slice(-30);
     app.pet.nudge('energy', -15); app.pet.nudge('inspiration', -20); app.pet.nudge('bond', 3); app.pet.nudge('mood', 5);
     app.saveState();
     app.lastResult = { song: cr.song, record };

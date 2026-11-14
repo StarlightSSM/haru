@@ -230,6 +230,31 @@ main { position: absolute; top: var(--tb-h); left: 0; right: 0; bottom: 0; }
 .cell.x { background: var(--accent); border-color: var(--accent); }
 .cell.o { background: var(--paper); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 9px var(--accent2); }
 .cell.play { outline: 2px solid var(--accent2); outline-offset: 1px; }
+/* taste */
+.taste { position: absolute; inset: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.taste-head { display: grid; grid-template-columns: 1fr auto; gap: 6px 18px; align-items: center; }
+.taste-head h2 { margin: 0; font-size: 20px; }
+.taste-head .say { color: var(--muted); }
+.taste-head .recent { font: 11px var(--mono); color: var(--muted); grid-column: 1 / 3; }
+.taste-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.style-card { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 7px; overflow: hidden; }
+.style-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--sc); }
+.style-card.fav { border-color: var(--sc); }
+.style-card.req { box-shadow: 0 0 0 2px var(--sc) inset; }
+.style-card h3 { margin: 0; font-size: 15px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.style-card h3 small { font: 10px var(--mono); color: var(--muted); letter-spacing: .05em; }
+.style-card h3 .badge { font-size: 10px; color: #fff; background: var(--sc); border-radius: 999px; padding: 1px 7px; }
+.style-card p { margin: 0; font-size: 12px; line-height: 1.5; }
+.style-card .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.style-card .tags span { font-size: 10.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; color: var(--muted); }
+.style-card .insts { font-size: 11px; color: var(--muted); }
+.style-card .like { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); }
+.style-card .like .bar { height: 6px; background: var(--faint); border-radius: 3px; overflow: hidden; }
+.style-card .like .bar i { display: block; height: 100%; background: var(--sc); transition: width .4s; }
+.style-card .btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.style-card .btns .btn { font-size: 12px; padding: 5px 10px; }
+.taste-credit { font-size: 11px; line-height: 1.6; }
+@media (max-width: 600px) { .taste-head { grid-template-columns: 1fr; } .taste-grid { grid-template-columns: 1fr; } }
 .lab-controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
 .ctl { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
 .ctl input[type=range] { width: 160px; }

@@ -321,8 +321,19 @@ main { position: absolute; top: var(--tb-h); left: 0; right: 0; bottom: 0; }
 
 /* ================= mobile / tablet ================= */
 html.mobile body { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; }
-html.mobile #titlebar { -webkit-app-region: no-drag; padding-top: env(safe-area-inset-top); height: calc(var(--tb-h) + env(safe-area-inset-top)); }
-html.mobile main { top: calc(var(--tb-h) + env(safe-area-inset-top)); bottom: env(safe-area-inset-bottom); left: env(safe-area-inset-left); right: env(safe-area-inset-right); }
+/* system bar insets: native env() plus the values Capacitor injects (--safe-area-inset-*),
+   since some Android WebViews report env() as 0 while drawing edge-to-edge */
+html.mobile {
+  --sa-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --sa-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --sa-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  --sa-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+}
+html.mobile #titlebar { -webkit-app-region: no-drag; padding-top: var(--sa-top); padding-left: calc(10px + var(--sa-left)); height: calc(var(--tb-h) + var(--sa-top)); }
+html.mobile main { top: calc(var(--tb-h) + var(--sa-top)); bottom: var(--sa-bottom); left: var(--sa-left); right: var(--sa-right); }
+html.mobile .modal-back { padding: var(--sa-top) var(--sa-right) var(--sa-bottom) var(--sa-left); box-sizing: border-box; }
+@media (max-width: 900px) { html.mobile .modal-back { background: var(--panel); backdrop-filter: none; } }
+html.mobile #toast-root { bottom: calc(80px + var(--sa-bottom)); }
 html.mobile .tb-overlay-space { display: none; }
 html.mobile .tb-tools { padding-right: 10px; }
 .hud-tl { cursor: pointer; }
@@ -358,7 +369,7 @@ html.mobile .tb-tools { padding-right: 10px; }
   .arch-detail { overflow: visible; flex: none; }
   .wd { grid-template-columns: 1fr; }
   .shop-items { overflow: visible; }
-  .modal { width: 100vw !important; max-height: 100%; height: 100%; border-radius: 0; }
+  .modal { width: 100% !important; max-height: 100%; height: 100%; border-radius: 0; }
   .modal-back { place-items: stretch; }
   .set-layout { grid-template-columns: 1fr; min-height: 0; }
   .set-tabs { flex-direction: row; overflow-x: auto; }

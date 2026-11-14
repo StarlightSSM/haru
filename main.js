@@ -378,6 +378,14 @@ async function runShots() {
     send('cmd', { view: 'room' }); send('cmd', { cam: 'close' }); await wait(3000); await cap('08_close');
     if (miniWin || true) { hideMainToMini(); await wait(1500); if (miniWin) { const img = await miniWin.webContents.capturePage(); fs.writeFileSync(path.join(dir, '09_mini.png'), img.toPNG()); } }
     quitting = true; app.quit();
+  } else if (plan === 'walls') {
+    await wait(4000);
+    send('cmd', { cam: 'shoulder' }); await wait(3500); await cap('w1_shoulder');
+    send('cmd', { orbit: [-500, 0] }); await wait(2500); await cap('w2_orbit_back');
+    send('cmd', { cam: 'wide' }); await wait(3000); send('cmd', { orbit: [0, 160, 1.4] }); await wait(2500); await cap('w3_wide_high');
+    send('cmd', { cam: 'desk' }); await wait(3000); send('cmd', { orbit: [700, -60] }); await wait(2500); await cap('w4_desk_side');
+    send('cmd', { cam: 'nook' }); await wait(3000); send('cmd', { orbit: [-400, 0] }); await wait(2500); await cap('w5_nook_turn');
+    quitting = true; app.quit();
   } else if (plan === 'creator') {
     send('cmd', { creator: true }); await wait(5000); await cap('creator');
     const info = await mainWin.webContents.executeJavaScript(`(() => { const s = document.querySelectorAll('canvas'); return [...s].map(c => c.width + 'x' + c.height).join(' ') })()`);

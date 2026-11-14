@@ -152,9 +152,45 @@
       /* wainscot */
       add(s, box(7.2, 0.9, 0.04), toon('#ddd2c2'), { pos: [0, 0.45, -2.18], outline: 0, receive: true });
       add(s, box(7.2, 0.04, 0.06), white, { pos: [0, 0.9, -2.17], outline: 0 });
-      /* side walls */
-      const side = (x) => { const m = new T.Mesh(box(0.2, 3.2, 4.6), this.wallMat); m.position.set(x, 1.6, -0.1); m.receiveShadow = true; s.add(m); };
-      side(-3.7); side(3.7);
+      /* side walls, front wall and ceiling: single-sided planes facing into the room.
+         From inside every direction is closed; the outside "wide" camera sees straight through
+         them (back faces are culled), like a dollhouse cut-away. */
+      const RW = 3.6, RF = 2.2, RB = -2.4, RH = 3.2;
+      const inward = (w, h, mat, pos, rotY, rotX = 0) => {
+        const m = new T.Mesh(new T.PlaneGeometry(w, h), mat);
+        m.position.set(...pos); m.rotation.set(rotX, rotY, 0, 'YXZ'); m.receiveShadow = true;
+        s.add(m); return m;
+      };
+      const wainMat = toon('#ddd2c2'), trim = toon('#f6f2ea');
+      inward(RF - RB, RH, this.wallMat, [-RW, RH / 2, (RF + RB) / 2], Math.PI / 2);
+      inward(RF - RB, RH, this.wallMat, [RW, RH / 2, (RF + RB) / 2], -Math.PI / 2);
+      inward(RF - RB, 0.9, wainMat, [-RW + 0.01, 0.45, (RF + RB) / 2], Math.PI / 2);
+      inward(RF - RB, 0.9, wainMat, [RW - 0.01, 0.45, (RF + RB) / 2], -Math.PI / 2);
+      inward(RW * 2, RH, toon('#e3d9cb', { levels: [190, 230, 255] }), [0, RH / 2, RF], Math.PI);
+      inward(RW * 2, 0.9, wainMat, [0, 0.45, RF - 0.01], Math.PI);
+      inward(RW * 2, 0.04, trim, [0, 0.9, RF - 0.015], Math.PI);
+      const ceil = inward(RW * 2, RF - RB, toon('#f3ede4', { levels: [200, 235, 255] }), [0, RH, (RF + RB) / 2], 0, Math.PI / 2);
+      ceil.receiveShadow = false;
+      /* door, light switch, calendar and coat hook on the front wall (planes, invisible from outside) */
+      const fz = RF - 0.02;
+      inward(1.0, 2.15, toon('#e9e1d4'), [2.35, 1.075, fz + 0.005], Math.PI);
+      inward(0.86, 2.05, toon('#b48a64'), [2.35, 1.025, fz], Math.PI);
+      inward(0.62, 0.8, toon('#a77b55'), [2.35, 1.55, fz - 0.003], Math.PI);
+      inward(0.62, 0.8, toon('#a77b55'), [2.35, 0.6, fz - 0.003], Math.PI);
+      const knob = new T.Mesh(new T.CircleGeometry(0.035, 20), toon('#e8c05a')); knob.position.set(2.0, 1.0, fz - 0.006); knob.rotation.y = Math.PI; s.add(knob);
+      inward(0.08, 0.12, trim, [1.6, 1.25, fz], Math.PI);
+      inward(0.03, 0.05, toon('#cfc6b8'), [1.6, 1.26, fz - 0.003], Math.PI);
+      const cal = document.createElement('canvas'); cal.width = 256; cal.height = 320; const cx2 = cal.getContext('2d');
+      cx2.fillStyle = '#fbf8f2'; cx2.fillRect(0, 0, 256, 320); cx2.fillStyle = '#e0574f'; cx2.fillRect(0, 0, 256, 60);
+      cx2.fillStyle = '#fff'; cx2.font = 'bold 34px Consolas, monospace'; cx2.textAlign = 'center'; cx2.fillText(String(new Date().getMonth() + 1).padStart(2, '0'), 128, 44);
+      cx2.fillStyle = '#5c616b'; cx2.font = '18px Consolas, monospace';
+      for (let d = 0; d < 30; d++) cx2.fillText(String(d + 1), 30 + (d % 7) * 33, 100 + Math.floor(d / 7) * 44);
+      const calTex = new T.CanvasTexture(cal); calTex.colorSpace = T.SRGBColorSpace;
+      inward(0.4, 0.5, toon('#ffffff', { map: calTex }), [0.6, 1.75, fz], Math.PI);
+      inward(0.9, 0.06, toon('#8a6040'), [-1.2, 1.9, fz], Math.PI);
+      ['#c9d3e6', '#e9a77c'].forEach((c, i) => inward(0.28, 0.5, toon(c), [-1.45 + i * 0.45, 1.6, fz - 0.004], Math.PI));
+      /* the back wall is 0.2 thick (z −2.4…−2.2): keep the camera clear of it */
+      this.roomBounds = { x: RW - 0.25, zMin: RB + 0.45, zMax: RF + 2.0, yMin: 0.3, yMax: RH - 0.2 };
       /* window frame + sill + glass */
       const fm = white;
       add(s, box(2.5, 0.07, 0.24), fm, { pos: [(wx0 + wx1) / 2, wy1 + 0.03, -2.3], outline: 0.004 });
@@ -383,12 +419,20 @@
       const sp = new T.Spherical().setFromVector3(off);
       sp.theta -= dx * 0.005; sp.phi = H.clamp(sp.phi - dy * 0.004, 0.25, 1.65);
       c.p.copy(c.t).add(new T.Vector3().setFromSpherical(sp));
+      this.clampCam(c.p);
       this.cam.p.copy(c.p);
     }
     zoom(f) {
       const c = this.camTarget;
       const off = c.p.clone().sub(c.t); const d = H.clamp(off.length() * f, 0.35, 7);
       c.p.copy(c.t).add(off.setLength(d));
+      this.clampCam(c.p);
+    }
+    /* keep a user-steered camera inside the room (the open front side may look in from outside) */
+    clampCam(p) {
+      const b = this.roomBounds; if (!b) return p;
+      p.x = H.clamp(p.x, -b.x, b.x); p.y = H.clamp(p.y, b.yMin, b.yMax); p.z = H.clamp(p.z, b.zMin, b.zMax);
+      return p;
     }
     setCameraTarget() { /* 2D API compatibility */ }
 

@@ -105,6 +105,7 @@
     if (c.intervene && app.creation.active) app.creation.intervene(c.intervene.kind, Object.assign({}, c.intervene));
     if (c.tool) tool(c.tool);
     if (c.creator) H.openCreator(app);
+    if (c.orbit && app.room.is3D) { app.camMode = 'manual'; app.camName = null; app.room.orbit(c.orbit[0], c.orbit[1]); if (c.orbit[2]) app.room.zoom(c.orbit[2]); }
     if (c.closeModal) { const b = document.querySelector('.modal-back'); if (b) b.querySelector('.modal-head .icon-btn').click(); }
     if (c.time != null) app.debugHours = c.time;
     if (c.noAuto) app.settings.general.autoCreate = false;

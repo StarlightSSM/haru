@@ -1,0 +1,1530 @@
+{
+ "instruments": {
+  "piano": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "piano/00.mp3",
+     "midi": 36,
+     "cents": 4
+    },
+    {
+     "file": "piano/01.mp3",
+     "midi": 39,
+     "cents": -3
+    },
+    {
+     "file": "piano/02.mp3",
+     "midi": 42,
+     "cents": 4
+    },
+    {
+     "file": "piano/03.mp3",
+     "midi": 45,
+     "cents": 1
+    },
+    {
+     "file": "piano/04.mp3",
+     "midi": 48,
+     "cents": 11
+    },
+    {
+     "file": "piano/05.mp3",
+     "midi": 52,
+     "cents": 0
+    },
+    {
+     "file": "piano/06.mp3",
+     "midi": 56,
+     "cents": 3
+    },
+    {
+     "file": "piano/07.mp3",
+     "midi": 60,
+     "cents": 4
+    },
+    {
+     "file": "piano/08.mp3",
+     "midi": 64,
+     "cents": -4
+    },
+    {
+     "file": "piano/09.mp3",
+     "midi": 68,
+     "cents": 1
+    },
+    {
+     "file": "piano/10.mp3",
+     "midi": 72,
+     "cents": -2
+    },
+    {
+     "file": "piano/11.mp3",
+     "midi": 76,
+     "cents": 4
+    },
+    {
+     "file": "piano/12.mp3",
+     "midi": 80,
+     "cents": 7
+    },
+    {
+     "file": "piano/13.mp3",
+     "midi": 83,
+     "cents": 2
+    },
+    {
+     "file": "piano/14.mp3",
+     "midi": 87,
+     "cents": -1
+    },
+    {
+     "file": "piano/15.mp3",
+     "midi": 90,
+     "cents": 3
+    },
+    {
+     "file": "piano/16.mp3",
+     "midi": 93,
+     "cents": 4
+    },
+    {
+     "file": "piano/17.mp3",
+     "midi": 96,
+     "cents": 2
+    },
+    {
+     "file": "piano/18.mp3",
+     "midi": 99,
+     "cents": 4
+    },
+    {
+     "file": "piano/19.mp3",
+     "midi": 102,
+     "cents": 7
+    },
+    {
+     "file": "piano/20.mp3",
+     "midi": 105,
+     "cents": 0
+    },
+    {
+     "file": "piano/21.mp3",
+     "midi": 108,
+     "cents": 0
+    }
+   ]
+  },
+  "epiano": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "epiano/00.mp3",
+     "midi": 28,
+     "cents": 1
+    },
+    {
+     "file": "epiano/01.mp3",
+     "midi": 32,
+     "cents": 0
+    },
+    {
+     "file": "epiano/02.mp3",
+     "midi": 36,
+     "cents": 0
+    },
+    {
+     "file": "epiano/03.mp3",
+     "midi": 40,
+     "cents": 1
+    },
+    {
+     "file": "epiano/04.mp3",
+     "midi": 44,
+     "cents": 1
+    },
+    {
+     "file": "epiano/05.mp3",
+     "midi": 48,
+     "cents": 1
+    },
+    {
+     "file": "epiano/06.mp3",
+     "midi": 52,
+     "cents": 1
+    },
+    {
+     "file": "epiano/07.mp3",
+     "midi": 56,
+     "cents": 1
+    },
+    {
+     "file": "epiano/08.mp3",
+     "midi": 60,
+     "cents": 0
+    },
+    {
+     "file": "epiano/09.mp3",
+     "midi": 64,
+     "cents": 1
+    },
+    {
+     "file": "epiano/10.mp3",
+     "midi": 68,
+     "cents": 1
+    },
+    {
+     "file": "epiano/11.mp3",
+     "midi": 72,
+     "cents": 1
+    },
+    {
+     "file": "epiano/12.mp3",
+     "midi": 76,
+     "cents": 1
+    },
+    {
+     "file": "epiano/13.mp3",
+     "midi": 80,
+     "cents": 1
+    },
+    {
+     "file": "epiano/14.mp3",
+     "midi": 84,
+     "cents": 1
+    },
+    {
+     "file": "epiano/15.mp3",
+     "midi": 88,
+     "cents": 2
+    },
+    {
+     "file": "epiano/16.mp3",
+     "midi": 92,
+     "cents": -1
+    },
+    {
+     "file": "epiano/17.mp3",
+     "midi": 96,
+     "cents": 3
+    }
+   ]
+  },
+  "vibes": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "vibes/00.mp3",
+     "midi": 53,
+     "cents": 0
+    },
+    {
+     "file": "vibes/01.mp3",
+     "midi": 57,
+     "cents": 0
+    },
+    {
+     "file": "vibes/02.mp3",
+     "midi": 60,
+     "cents": 0
+    },
+    {
+     "file": "vibes/03.mp3",
+     "midi": 64,
+     "cents": -2
+    },
+    {
+     "file": "vibes/04.mp3",
+     "midi": 67,
+     "cents": 0
+    },
+    {
+     "file": "vibes/05.mp3",
+     "midi": 71,
+     "cents": 0
+    },
+    {
+     "file": "vibes/06.mp3",
+     "midi": 74,
+     "cents": 0
+    },
+    {
+     "file": "vibes/07.mp3",
+     "midi": 77,
+     "cents": 1
+    },
+    {
+     "file": "vibes/08.mp3",
+     "midi": 81,
+     "cents": 0
+    },
+    {
+     "file": "vibes/09.mp3",
+     "midi": 84,
+     "cents": 0
+    },
+    {
+     "file": "vibes/10.mp3",
+     "midi": 88,
+     "cents": 1
+    }
+   ]
+  },
+  "marimba": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "marimba/00.mp3",
+     "midi": 41,
+     "cents": 22
+    },
+    {
+     "file": "marimba/01.mp3",
+     "midi": 48,
+     "cents": 14
+    },
+    {
+     "file": "marimba/02.mp3",
+     "midi": 55,
+     "cents": 0
+    },
+    {
+     "file": "marimba/03.mp3",
+     "midi": 59,
+     "cents": -3
+    },
+    {
+     "file": "marimba/04.mp3",
+     "midi": 65,
+     "cents": -5
+    },
+    {
+     "file": "marimba/05.mp3",
+     "midi": 72,
+     "cents": 6
+    },
+    {
+     "file": "marimba/06.mp3",
+     "midi": 79,
+     "cents": -2
+    },
+    {
+     "file": "marimba/07.mp3",
+     "midi": 83,
+     "cents": 1
+    },
+    {
+     "file": "marimba/08.mp3",
+     "midi": 89,
+     "cents": -2
+    },
+    {
+     "file": "marimba/09.mp3",
+     "midi": 96,
+     "cents": 4
+    }
+   ]
+  },
+  "glock": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "glock/00.mp3",
+     "midi": 79,
+     "cents": 0
+    },
+    {
+     "file": "glock/01.mp3",
+     "midi": 84,
+     "cents": 0
+    },
+    {
+     "file": "glock/02.mp3",
+     "midi": 91,
+     "cents": 0
+    },
+    {
+     "file": "glock/03.mp3",
+     "midi": 96,
+     "cents": 0
+    },
+    {
+     "file": "glock/04.mp3",
+     "midi": 103,
+     "cents": -36
+    },
+    {
+     "file": "glock/05.mp3",
+     "midi": 108,
+     "cents": -20
+    }
+   ]
+  },
+  "kalimba": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "kalimba/00.mp3",
+     "midi": 59,
+     "cents": 3
+    },
+    {
+     "file": "kalimba/01.mp3",
+     "midi": 61,
+     "cents": 0
+    },
+    {
+     "file": "kalimba/02.mp3",
+     "midi": 63,
+     "cents": -12
+    },
+    {
+     "file": "kalimba/03.mp3",
+     "midi": 66,
+     "cents": 23
+    },
+    {
+     "file": "kalimba/04.mp3",
+     "midi": 68,
+     "cents": 13
+    },
+    {
+     "file": "kalimba/05.mp3",
+     "midi": 71,
+     "cents": 1
+    },
+    {
+     "file": "kalimba/06.mp3",
+     "midi": 73,
+     "cents": 1
+    },
+    {
+     "file": "kalimba/07.mp3",
+     "midi": 75,
+     "cents": 6
+    },
+    {
+     "file": "kalimba/08.mp3",
+     "midi": 78,
+     "cents": 0
+    },
+    {
+     "file": "kalimba/09.mp3",
+     "midi": 81,
+     "cents": 0
+    },
+    {
+     "file": "kalimba/10.mp3",
+     "midi": 83,
+     "cents": 0
+    }
+   ]
+  },
+  "sax": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "sax/00.mp3",
+     "midi": 44,
+     "cents": 0
+    },
+    {
+     "file": "sax/01.mp3",
+     "midi": 48,
+     "cents": 2
+    },
+    {
+     "file": "sax/02.mp3",
+     "midi": 52,
+     "cents": 25
+    },
+    {
+     "file": "sax/03.mp3",
+     "midi": 56,
+     "cents": -1
+    },
+    {
+     "file": "sax/04.mp3",
+     "midi": 60,
+     "cents": 0
+    },
+    {
+     "file": "sax/05.mp3",
+     "midi": 64,
+     "cents": 0
+    },
+    {
+     "file": "sax/06.mp3",
+     "midi": 68,
+     "cents": -1
+    },
+    {
+     "file": "sax/07.mp3",
+     "midi": 72,
+     "cents": -1
+    },
+    {
+     "file": "sax/08.mp3",
+     "midi": 76,
+     "cents": 0
+    },
+    {
+     "file": "sax/09.mp3",
+     "midi": 80,
+     "cents": 1
+    },
+    {
+     "file": "sax/10.mp3",
+     "midi": 84,
+     "cents": 2
+    },
+    {
+     "file": "sax/11.mp3",
+     "midi": 88,
+     "cents": 1
+    }
+   ]
+  },
+  "strings": {
+   "src": "vsco",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "strings/00.mp3",
+     "midi": 36,
+     "cents": 0
+    },
+    {
+     "file": "strings/01.mp3",
+     "midi": 40,
+     "cents": -3
+    },
+    {
+     "file": "strings/02.mp3",
+     "midi": 43,
+     "cents": -19
+    },
+    {
+     "file": "strings/03.mp3",
+     "midi": 47,
+     "cents": 1
+    },
+    {
+     "file": "strings/04.mp3",
+     "midi": 50,
+     "cents": 3
+    },
+    {
+     "file": "strings/05.mp3",
+     "midi": 53,
+     "cents": -3
+    },
+    {
+     "file": "strings/06.mp3",
+     "midi": 57,
+     "cents": -9
+    },
+    {
+     "file": "strings/07.mp3",
+     "midi": 60,
+     "cents": 4
+    },
+    {
+     "file": "strings/08.mp3",
+     "midi": 66,
+     "cents": 17
+    },
+    {
+     "file": "strings/09.mp3",
+     "midi": 69,
+     "cents": 2
+    },
+    {
+     "file": "strings/10.mp3",
+     "midi": 72,
+     "cents": -4
+    },
+    {
+     "file": "strings/11.mp3",
+     "midi": 76,
+     "cents": -1
+    },
+    {
+     "file": "strings/12.mp3",
+     "midi": 79,
+     "cents": -1
+    },
+    {
+     "file": "strings/13.mp3",
+     "midi": 83,
+     "cents": -1
+    },
+    {
+     "file": "strings/14.mp3",
+     "midi": 86,
+     "cents": -5
+    }
+   ]
+  },
+  "pizz": {
+   "src": "vsco",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "pizz/00.mp3",
+     "midi": 55,
+     "cents": 0
+    },
+    {
+     "file": "pizz/01.mp3",
+     "midi": 59,
+     "cents": 0
+    },
+    {
+     "file": "pizz/02.mp3",
+     "midi": 62,
+     "cents": 1
+    },
+    {
+     "file": "pizz/03.mp3",
+     "midi": 66,
+     "cents": 11
+    },
+    {
+     "file": "pizz/04.mp3",
+     "midi": 69,
+     "cents": -15
+    },
+    {
+     "file": "pizz/05.mp3",
+     "midi": 72,
+     "cents": 2
+    },
+    {
+     "file": "pizz/06.mp3",
+     "midi": 76,
+     "cents": -11
+    },
+    {
+     "file": "pizz/07.mp3",
+     "midi": 79,
+     "cents": 0
+    },
+    {
+     "file": "pizz/08.mp3",
+     "midi": 83,
+     "cents": 0
+    },
+    {
+     "file": "pizz/09.mp3",
+     "midi": 86,
+     "cents": -19
+    }
+   ]
+  },
+  "upright": {
+   "src": "vsco",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "upright/00.mp3",
+     "midi": 28,
+     "cents": 0
+    },
+    {
+     "file": "upright/01.mp3",
+     "midi": 31,
+     "cents": 0
+    },
+    {
+     "file": "upright/02.mp3",
+     "midi": 34,
+     "cents": 0
+    },
+    {
+     "file": "upright/03.mp3",
+     "midi": 38,
+     "cents": -40
+    },
+    {
+     "file": "upright/04.mp3",
+     "midi": 42,
+     "cents": 0
+    },
+    {
+     "file": "upright/05.mp3",
+     "midi": 45,
+     "cents": 0
+    },
+    {
+     "file": "upright/06.mp3",
+     "midi": 49,
+     "cents": 0
+    },
+    {
+     "file": "upright/07.mp3",
+     "midi": 52,
+     "cents": 0
+    },
+    {
+     "file": "upright/08.mp3",
+     "midi": 56,
+     "cents": 0
+    },
+    {
+     "file": "upright/09.mp3",
+     "midi": 59,
+     "cents": 0
+    }
+   ]
+  },
+  "harp": {
+   "src": "vsco",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "harp/00.mp3",
+     "midi": 28,
+     "cents": -4
+    },
+    {
+     "file": "harp/01.mp3",
+     "midi": 31,
+     "cents": 0
+    },
+    {
+     "file": "harp/02.mp3",
+     "midi": 35,
+     "cents": -13
+    },
+    {
+     "file": "harp/03.mp3",
+     "midi": 38,
+     "cents": 0
+    },
+    {
+     "file": "harp/04.mp3",
+     "midi": 41,
+     "cents": -10
+    },
+    {
+     "file": "harp/05.mp3",
+     "midi": 45,
+     "cents": 2
+    },
+    {
+     "file": "harp/06.mp3",
+     "midi": 48,
+     "cents": 0
+    },
+    {
+     "file": "harp/07.mp3",
+     "midi": 52,
+     "cents": -1
+    },
+    {
+     "file": "harp/08.mp3",
+     "midi": 55,
+     "cents": -1
+    },
+    {
+     "file": "harp/09.mp3",
+     "midi": 59,
+     "cents": -9
+    },
+    {
+     "file": "harp/10.mp3",
+     "midi": 62,
+     "cents": -9
+    },
+    {
+     "file": "harp/11.mp3",
+     "midi": 65,
+     "cents": 1
+    },
+    {
+     "file": "harp/12.mp3",
+     "midi": 69,
+     "cents": -10
+    },
+    {
+     "file": "harp/13.mp3",
+     "midi": 72,
+     "cents": -8
+    },
+    {
+     "file": "harp/14.mp3",
+     "midi": 76,
+     "cents": -11
+    },
+    {
+     "file": "harp/15.mp3",
+     "midi": 79,
+     "cents": -7
+    },
+    {
+     "file": "harp/16.mp3",
+     "midi": 83,
+     "cents": -5
+    },
+    {
+     "file": "harp/17.mp3",
+     "midi": 86,
+     "cents": -6
+    },
+    {
+     "file": "harp/18.mp3",
+     "midi": 89,
+     "cents": -5
+    },
+    {
+     "file": "harp/19.mp3",
+     "midi": 93,
+     "cents": -15
+    },
+    {
+     "file": "harp/20.mp3",
+     "midi": 95,
+     "cents": -9
+    },
+    {
+     "file": "harp/21.mp3",
+     "midi": 98,
+     "cents": -6
+    },
+    {
+     "file": "harp/22.mp3",
+     "midi": 101,
+     "cents": -26
+    }
+   ]
+  },
+  "flute": {
+   "src": "vsco",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "flute/00.mp3",
+     "midi": 60,
+     "cents": 3
+    },
+    {
+     "file": "flute/01.mp3",
+     "midi": 64,
+     "cents": 4
+    },
+    {
+     "file": "flute/02.mp3",
+     "midi": 69,
+     "cents": 0
+    },
+    {
+     "file": "flute/03.mp3",
+     "midi": 72,
+     "cents": 5
+    },
+    {
+     "file": "flute/04.mp3",
+     "midi": 76,
+     "cents": 1
+    },
+    {
+     "file": "flute/05.mp3",
+     "midi": 81,
+     "cents": 4
+    },
+    {
+     "file": "flute/06.mp3",
+     "midi": 84,
+     "cents": -4
+    },
+    {
+     "file": "flute/07.mp3",
+     "midi": 88,
+     "cents": 0
+    },
+    {
+     "file": "flute/08.mp3",
+     "midi": 93,
+     "cents": 0
+    },
+    {
+     "file": "flute/09.mp3",
+     "midi": 96,
+     "cents": -5
+    }
+   ]
+  },
+  "clarinet": {
+   "src": "vsco",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "clarinet/00.mp3",
+     "midi": 50,
+     "cents": 0
+    },
+    {
+     "file": "clarinet/01.mp3",
+     "midi": 53,
+     "cents": -7
+    },
+    {
+     "file": "clarinet/02.mp3",
+     "midi": 58,
+     "cents": -1
+    },
+    {
+     "file": "clarinet/03.mp3",
+     "midi": 62,
+     "cents": -3
+    },
+    {
+     "file": "clarinet/04.mp3",
+     "midi": 65,
+     "cents": 0
+    },
+    {
+     "file": "clarinet/05.mp3",
+     "midi": 70,
+     "cents": 0
+    },
+    {
+     "file": "clarinet/06.mp3",
+     "midi": 74,
+     "cents": 3
+    },
+    {
+     "file": "clarinet/07.mp3",
+     "midi": 77,
+     "cents": 0
+    },
+    {
+     "file": "clarinet/08.mp3",
+     "midi": 82,
+     "cents": 1
+    },
+    {
+     "file": "clarinet/09.mp3",
+     "midi": 86,
+     "cents": -1
+    },
+    {
+     "file": "clarinet/10.mp3",
+     "midi": 90,
+     "cents": 0
+    }
+   ]
+  },
+  "trumpet": {
+   "src": "vsco",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "trumpet/00.mp3",
+     "midi": 53,
+     "cents": -8
+    },
+    {
+     "file": "trumpet/01.mp3",
+     "midi": 57,
+     "cents": 2
+    },
+    {
+     "file": "trumpet/02.mp3",
+     "midi": 60,
+     "cents": -15
+    },
+    {
+     "file": "trumpet/03.mp3",
+     "midi": 63,
+     "cents": -5
+    },
+    {
+     "file": "trumpet/04.mp3",
+     "midi": 67,
+     "cents": 6
+    },
+    {
+     "file": "trumpet/05.mp3",
+     "midi": 70,
+     "cents": -7
+    },
+    {
+     "file": "trumpet/06.mp3",
+     "midi": 74,
+     "cents": -5
+    },
+    {
+     "file": "trumpet/07.mp3",
+     "midi": 77,
+     "cents": 1
+    },
+    {
+     "file": "trumpet/08.mp3",
+     "midi": 81,
+     "cents": -7
+    },
+    {
+     "file": "trumpet/09.mp3",
+     "midi": 84,
+     "cents": -2
+    }
+   ]
+  },
+  "horn": {
+   "src": "vsco",
+   "license": "CC0-1.0",
+   "zones": [
+    {
+     "file": "horn/00.mp3",
+     "midi": 36,
+     "cents": 0
+    },
+    {
+     "file": "horn/01.mp3",
+     "midi": 39,
+     "cents": -20
+    },
+    {
+     "file": "horn/02.mp3",
+     "midi": 43,
+     "cents": 0
+    },
+    {
+     "file": "horn/03.mp3",
+     "midi": 46,
+     "cents": -1
+    },
+    {
+     "file": "horn/04.mp3",
+     "midi": 50,
+     "cents": -10
+    },
+    {
+     "file": "horn/05.mp3",
+     "midi": 53,
+     "cents": -15
+    },
+    {
+     "file": "horn/06.mp3",
+     "midi": 57,
+     "cents": -11
+    },
+    {
+     "file": "horn/07.mp3",
+     "midi": 60,
+     "cents": -4
+    }
+   ]
+  },
+  "ebass": {
+   "src": "tonejs",
+   "license": "CC-BY-3.0",
+   "zones": [
+    {
+     "file": "ebass/00.mp3",
+     "midi": 25,
+     "cents": 13
+    },
+    {
+     "file": "ebass/01.mp3",
+     "midi": 28,
+     "cents": 7
+    },
+    {
+     "file": "ebass/02.mp3",
+     "midi": 31,
+     "cents": -1
+    },
+    {
+     "file": "ebass/03.mp3",
+     "midi": 34,
+     "cents": 0
+    },
+    {
+     "file": "ebass/04.mp3",
+     "midi": 37,
+     "cents": 2
+    },
+    {
+     "file": "ebass/05.mp3",
+     "midi": 40,
+     "cents": 0
+    },
+    {
+     "file": "ebass/06.mp3",
+     "midi": 43,
+     "cents": -6
+    },
+    {
+     "file": "ebass/07.mp3",
+     "midi": 46,
+     "cents": 0
+    },
+    {
+     "file": "ebass/08.mp3",
+     "midi": 49,
+     "cents": 0
+    },
+    {
+     "file": "ebass/09.mp3",
+     "midi": 52,
+     "cents": 0
+    },
+    {
+     "file": "ebass/10.mp3",
+     "midi": 55,
+     "cents": 1
+    },
+    {
+     "file": "ebass/11.mp3",
+     "midi": 58,
+     "cents": 1
+    },
+    {
+     "file": "ebass/12.mp3",
+     "midi": 61,
+     "cents": 2
+    },
+    {
+     "file": "ebass/13.mp3",
+     "midi": 64,
+     "cents": 0
+    },
+    {
+     "file": "ebass/14.mp3",
+     "midi": 67,
+     "cents": 2
+    },
+    {
+     "file": "ebass/15.mp3",
+     "midi": 70,
+     "cents": -7
+    },
+    {
+     "file": "ebass/16.mp3",
+     "midi": 73,
+     "cents": 0
+    }
+   ]
+  },
+  "nylon": {
+   "src": "tonejs",
+   "license": "CC-BY-3.0",
+   "zones": [
+    {
+     "file": "nylon/00.mp3",
+     "midi": 35,
+     "cents": 2
+    },
+    {
+     "file": "nylon/01.mp3",
+     "midi": 38,
+     "cents": 2
+    },
+    {
+     "file": "nylon/02.mp3",
+     "midi": 42,
+     "cents": 2
+    },
+    {
+     "file": "nylon/03.mp3",
+     "midi": 45,
+     "cents": 0
+    },
+    {
+     "file": "nylon/04.mp3",
+     "midi": 49,
+     "cents": 2
+    },
+    {
+     "file": "nylon/05.mp3",
+     "midi": 52,
+     "cents": -1
+    },
+    {
+     "file": "nylon/06.mp3",
+     "midi": 55,
+     "cents": 0
+    },
+    {
+     "file": "nylon/07.mp3",
+     "midi": 59,
+     "cents": 3
+    },
+    {
+     "file": "nylon/08.mp3",
+     "midi": 63,
+     "cents": 2
+    },
+    {
+     "file": "nylon/09.mp3",
+     "midi": 66,
+     "cents": 0
+    },
+    {
+     "file": "nylon/10.mp3",
+     "midi": 69,
+     "cents": 6
+    },
+    {
+     "file": "nylon/11.mp3",
+     "midi": 73,
+     "cents": 12
+    },
+    {
+     "file": "nylon/12.mp3",
+     "midi": 76,
+     "cents": 1
+    },
+    {
+     "file": "nylon/13.mp3",
+     "midi": 79,
+     "cents": -1
+    },
+    {
+     "file": "nylon/14.mp3",
+     "midi": 82,
+     "cents": -5
+    }
+   ]
+  },
+  "acoustic": {
+   "src": "tonejs",
+   "license": "CC-BY-3.0",
+   "zones": [
+    {
+     "file": "acoustic/00.mp3",
+     "midi": 38,
+     "cents": 5
+    },
+    {
+     "file": "acoustic/01.mp3",
+     "midi": 41,
+     "cents": 3
+    },
+    {
+     "file": "acoustic/02.mp3",
+     "midi": 44,
+     "cents": -5
+    },
+    {
+     "file": "acoustic/03.mp3",
+     "midi": 47,
+     "cents": 0
+    },
+    {
+     "file": "acoustic/04.mp3",
+     "midi": 50,
+     "cents": 4
+    },
+    {
+     "file": "acoustic/05.mp3",
+     "midi": 53,
+     "cents": 2
+    },
+    {
+     "file": "acoustic/06.mp3",
+     "midi": 56,
+     "cents": -8
+    },
+    {
+     "file": "acoustic/07.mp3",
+     "midi": 59,
+     "cents": 9
+    },
+    {
+     "file": "acoustic/08.mp3",
+     "midi": 62,
+     "cents": 9
+    },
+    {
+     "file": "acoustic/09.mp3",
+     "midi": 65,
+     "cents": 7
+    },
+    {
+     "file": "acoustic/10.mp3",
+     "midi": 68,
+     "cents": 6
+    },
+    {
+     "file": "acoustic/11.mp3",
+     "midi": 71,
+     "cents": 7
+    },
+    {
+     "file": "acoustic/12.mp3",
+     "midi": 74,
+     "cents": 3
+    }
+   ]
+  },
+  "eguitar": {
+   "src": "tonejs",
+   "license": "CC-BY-3.0",
+   "zones": [
+    {
+     "file": "eguitar/00.mp3",
+     "midi": 37,
+     "cents": 1
+    },
+    {
+     "file": "eguitar/01.mp3",
+     "midi": 40,
+     "cents": -2
+    },
+    {
+     "file": "eguitar/02.mp3",
+     "midi": 45,
+     "cents": 0
+    },
+    {
+     "file": "eguitar/03.mp3",
+     "midi": 48,
+     "cents": -1
+    },
+    {
+     "file": "eguitar/04.mp3",
+     "midi": 51,
+     "cents": 0
+    },
+    {
+     "file": "eguitar/05.mp3",
+     "midi": 54,
+     "cents": -1
+    },
+    {
+     "file": "eguitar/06.mp3",
+     "midi": 57,
+     "cents": -4
+    },
+    {
+     "file": "eguitar/07.mp3",
+     "midi": 60,
+     "cents": -2
+    },
+    {
+     "file": "eguitar/08.mp3",
+     "midi": 63,
+     "cents": -1
+    },
+    {
+     "file": "eguitar/09.mp3",
+     "midi": 66,
+     "cents": 2
+    },
+    {
+     "file": "eguitar/10.mp3",
+     "midi": 69,
+     "cents": 0
+    },
+    {
+     "file": "eguitar/11.mp3",
+     "midi": 72,
+     "cents": 0
+    },
+    {
+     "file": "eguitar/12.mp3",
+     "midi": 75,
+     "cents": -2
+    },
+    {
+     "file": "eguitar/13.mp3",
+     "midi": 78,
+     "cents": 5
+    },
+    {
+     "file": "eguitar/14.mp3",
+     "midi": 81,
+     "cents": 1
+    },
+    {
+     "file": "eguitar/15.mp3",
+     "midi": 84,
+     "cents": 1
+    }
+   ]
+  }
+ },
+ "drums": {
+  "snare": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/snare1.mp3",
+    "drums/snare2.mp3"
+   ]
+  },
+  "snareSoft": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/snareSoft1.mp3",
+    "drums/snareSoft2.mp3"
+   ]
+  },
+  "hat": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/hat1.mp3",
+    "drums/hat2.mp3"
+   ]
+  },
+  "hatOpen": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/hatOpen1.mp3"
+   ]
+  },
+  "clap": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/clap1.mp3",
+    "drums/clap2.mp3"
+   ]
+  },
+  "rim": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/rim1.mp3",
+    "drums/rim2.mp3"
+   ]
+  },
+  "shaker": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/shaker1.mp3",
+    "drums/shaker2.mp3"
+   ]
+  },
+  "tamb": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/tamb1.mp3",
+    "drums/tamb2.mp3"
+   ]
+  },
+  "claves": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/claves1.mp3"
+   ]
+  },
+  "congaHi": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/congaHi1.mp3",
+    "drums/congaHi2.mp3"
+   ]
+  },
+  "congaLo": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/congaLo1.mp3",
+    "drums/congaLo2.mp3"
+   ]
+  },
+  "bongo": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/bongo1.mp3",
+    "drums/bongo2.mp3"
+   ]
+  },
+  "agogo": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/agogo1.mp3",
+    "drums/agogo2.mp3"
+   ]
+  },
+  "cowbell": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/cowbell1.mp3"
+   ]
+  },
+  "darbuka": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/darbuka1.mp3",
+    "drums/darbuka2.mp3"
+   ]
+  },
+  "frameLo": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/frameLo1.mp3",
+    "drums/frameLo2.mp3"
+   ]
+  },
+  "tomLo": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/tomLo1.mp3",
+    "drums/tomLo2.mp3"
+   ]
+  },
+  "slit": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/slit1.mp3",
+    "drums/slit2.mp3"
+   ]
+  },
+  "crash": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/crash1.mp3"
+   ]
+  },
+  "gong": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/gong1.mp3"
+   ]
+  },
+  "triangle": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/triangle1.mp3"
+   ]
+  },
+  "kick": {
+   "src": "vcsl",
+   "license": "CC0-1.0",
+   "files": [
+    "drums/kick1.mp3",
+    "drums/kick2.mp3"
+   ]
+  }
+ }
+}

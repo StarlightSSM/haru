@@ -166,6 +166,7 @@
       {
         id: 'creation', ko: '창작 · 저장', fields: [
           { key: 'creation.songSeconds', ko: '곡 길이', type: 'range', min: 30, max: 180, step: 15, fmt: (x) => x + '초' },
+          { key: 'creation.musicStyle', ko: '음악 스타일', sub: '맡기면 그 아이가 취향과 기분으로 골라요', type: 'select', options: [['auto', '그 아이 취향에 맡기기'], ...H.STYLES.map((x) => [x.id, x.ko])] },
           { key: 'creation.artStyle', ko: '그림 스타일', type: 'select', options: [['auto', '그날 기분에 맡기기'], ...H.ART_STYLES.map((a) => [a.id, a.ko])] },
           { key: 'creation.posterSize', ko: '그림 해상도 (가로)', type: 'select', options: [[1200, '1200px'], [1600, '1600px'], [2400, '2400px']] },
           { key: 'creation.video', ko: '작업 과정 녹화 (MP4 타임랩스)', type: 'switch' },

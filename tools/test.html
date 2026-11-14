@@ -5,6 +5,7 @@
 <script src="../node_modules/mp4-muxer/build/mp4-muxer.js"></script>
 <script src="../src/js/util.js"></script>
 <script src="../src/js/genres.js"></script>
+<script src="../src/js/styles.js"></script>
 <script src="../src/js/world.js"></script>
 <script src="../src/js/composer.js"></script>
 <script src="../src/js/synth.js"></script>
@@ -14,6 +15,7 @@
 <script src="../src/js/viz.js"></script>
 <script src="../src/js/recorder.js"></script>
 <script>
+  window.haru = { readAsset: (rel) => new Promise((res) => { const x = new XMLHttpRequest(); x.open('GET', '../src/assets/' + rel); x.responseType = 'arraybuffer'; x.onload = () => res(x.response ? new Uint8Array(x.response) : null); x.onerror = () => res(null); x.send(); }) };
   const log = (...a) => console.log('[test]', ...a);
   window.scale = async () => {
     const res = {};
@@ -64,10 +66,49 @@
     }
     return res;
   };
-  window.runTest = async (genreId) => {
+  window.prof2 = async (spec) => {
+    const [genreId, styleId] = spec.split(':');
+    const song = H.compose({ seed: 1234, genreId, styleId, mood: { valence: 0.1, arousal: 0.5, tension: 0.2 }, keywords: ['a', 'b', 'c'], seconds: 75 });
+    await H.samples.ensure(H.songSamples(song));
+    const res = {};
+    { const s = Object.assign({}, song, { notes: song.notes.filter((n) => n.t === 'counter'), drums: [], fx: Object.assign({}, song.fx, { reverb: 0 }) }); H.indexSong(s); const t = performance.now(); await H.renderSong(s); res.counterDry = Math.round(performance.now() - t); }
+    { const s = Object.assign({}, song, { notes: song.notes.filter((n) => n.t === 'counter').slice(0, 1), drums: [] }); H.indexSong(s); const t = performance.now(); await H.renderSong(s); res.oneNote = Math.round(performance.now() - t); }
+    for (const keep of ['none', 'counter']) {
+      const s = Object.assign({}, song, { notes: keep === 'drum' || keep === 'none' ? [] : song.notes.filter((n) => n.t === keep), drums: keep === 'drum' ? song.drums.slice() : [] });
+      H.indexSong(s);
+      const t = performance.now(); await H.renderSong(s); res[keep] = Math.round(performance.now() - t) + 'ms/' + (keep === 'drum' ? s.drums.length : s.notes.length);
+    }
+    return res;
+  };  window.pitchTest = async () => {
+    const ids = Object.keys(H.SAMPLED);
+    await H.samples.ensure(ids);
+    const yin = (x, sr) => { const W = 2048, maxT = Math.floor(sr / 30), minT = Math.floor(sr / 4000); const d = new Float32Array(maxT + 1); for (let t = 1; t <= maxT; t++) { let s = 0; for (let i = 0; i < W; i++) { const v = x[i] - x[i + t]; s += v * v; } d[t] = s; } let run = 0; const cm = new Float32Array(maxT + 1); for (let t = 1; t <= maxT; t++) { run += d[t]; cm[t] = d[t] * t / (run || 1); } for (let t = minT; t <= maxT; t++) if (cm[t] < 0.15) { while (t + 1 <= maxT && cm[t + 1] < cm[t]) t++; return 69 + 12 * Math.log2(sr / t / 440); } return null; };
+    const res = {};
+    for (const id of ids) {
+      const range = id === 'ebass' || id === 'upright' ? [33, 40, 47] : id === 'glock' ? [81, 88, 95] : [55, 62, 69, 76];
+      res[id] = [];
+      for (const m of range) {
+        const ctx = new OfflineAudioContext(1, 44100 * 1.2, 44100);
+        const V = H.makeVoices(ctx); V.play(id, 0, m, 1, 0.8, ctx.destination);
+        const b = await ctx.startRendering();
+        const det = yin(b.getChannelData(0).subarray(Math.floor(44100 * 0.15)), 44100);
+        res[id].push(det == null ? m + ':?' : `${m}:${(det - m >= 0 ? '+' : '')}${(det - m).toFixed(2)}`);
+      }
+      res[id] = res[id].join(' ');
+    }
+    return res;
+  };  window.probe = async () => {
+    const b = await window.haru.readAsset('samples/piano/00.mp3');
+    let err = '';
+    try { const c = new OfflineAudioContext(1, 32000, 32000); const ab = await c.decodeAudioData(b.buffer.slice(0)); err = 'ok ' + ab.duration.toFixed(2); } catch (e) { err = String(e); }
+    await H.samples.ensure(['piano', 'drums']);
+    return JSON.stringify({ bytes: b && b.length, err, zone: !!H.samples.zone('piano', 60), drum: !!H.samples.drum('kick') });
+  };
+  window.runTest = async (spec) => {
     const out = {};
+    const [genreId, styleId, noVideo] = spec.split(':');
     let t = performance.now();
-    const song = H.compose({ seed: 1234, genreId, mood: { valence: 0.1, arousal: 0.5, tension: 0.2 }, keywords: ['금리', '첫눈', 'AI'], seconds: 75 });
+    const song = H.compose({ seed: 1234, genreId, styleId, mood: { valence: 0.1, arousal: 0.5, tension: 0.2 }, keywords: ['湲덈━', '泥ル늿', 'AI'], seconds: 75 });
     out.compose = Math.round(performance.now() - t); out.notes = song.notes.length; out.drums = song.drums.length; out.bars = song.bars; out.dur = H.songDuration(song);
     t = performance.now();
     const buf = await H.renderSong(song);
@@ -77,6 +118,8 @@
     t = performance.now();
     const mp3 = await H.encodeMp3(buf, 192);
     out.mp3ms = Math.round(performance.now() - t); out.mp3kb = Math.round(mp3.length / 1024);
+    out.insts = H.songInstKo(song); out.sampled = H.songSamples(song).filter((n) => n === 'drums' || H.samples.has(n)).join(','); out.bpm = song.bpm;
+    if (noVideo) { window.mp3 = mp3; window.mp4 = null; return out; }
     out.media = await H.probeMedia();
     t = performance.now();
     const tl = new H.Timelapse();

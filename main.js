@@ -374,7 +374,7 @@ async function runShots() {
   await wait(5000);
   if (plan === 'basic') {
     await cap('01_room');
-    for (const [i, v] of ['world', 'studio', 'lab', 'archive', 'shop'].entries()) { send('cmd', { view: v }); await wait(1800); await cap(`0${i + 2}_${v}`); }
+    for (const [i, v] of ['world', 'studio', 'lab', 'taste', 'archive', 'shop'].entries()) { send('cmd', { view: v }); await wait(1800); await cap(`0${i + 2}_${v}`); }
     send('cmd', { view: 'room' }); send('cmd', { cam: 'close' }); await wait(3000); await cap('08_close');
     if (miniWin || true) { hideMainToMini(); await wait(1500); if (miniWin) { const img = await miniWin.webContents.capturePage(); fs.writeFileSync(path.join(dir, '09_mini.png'), img.toPNG()); } }
     quitting = true; app.quit();
@@ -411,6 +411,7 @@ async function runShots() {
     await wait(30000);
     await cap('c90_done');
     send('cmd', { view: 'archive' }); await wait(2500); await cap('c91_archive');
+    send('cmd', { view: 'taste' }); await wait(2000); await cap('c91_taste');
     send('cmd', { view: 'room' }); send('cmd', { creator: true }); await wait(4000); await cap('c92_creator');
     send('cmd', { closeModal: true });
     hideMainToMini(); await wait(4000);

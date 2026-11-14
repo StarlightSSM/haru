@@ -72,7 +72,7 @@
     stats: { mood: 62, energy: 85, focus: 40, bond: 15, inspiration: 45 },
     level: 1, xp: 0, stars: 60, works: 0, days: 0,
     known: { lofi: 0.6, bossa: 0.4, citypop: 0.35, ambient: 0.4, jazzwaltz: 0.3, reggae: 0.25 },
-    items: [], lastVisit: 0, lastWorkDate: '', history: [], request: null, whispers: [], creation: null,
+    items: [], lastVisit: 0, lastWorkDate: '', history: [], request: null, styleRequest: null, taste: null, whispers: [], creation: null,
     patsToday: 0, patsDate: '', firstRun: true,
   };
 

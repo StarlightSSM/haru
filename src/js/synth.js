@@ -1,8 +1,10 @@
-﻿/* HARU ??sound: procedural instruments, drums, ambience, live scheduler, offline render */
+/* HARU ??sound: procedural instruments, drums, ambience, live scheduler, offline render */
 (function (H) {
   'use strict';
 
-  const TRACK_GAIN = { lead: 0.8, chord: 0.42, pad: 0.3, bass: 0.75 };
+  const TRACK_GAIN = { lead: 0.8, chord: 0.42, pad: 0.3, bass: 0.75, arp: 0.38, counter: 0.45 };
+  /* stereo seat + reverb send per track (a clean, wide mix instead of everything dead-centre) */
+  const SEAT = { lead: [0.04, 0.32], chord: [-0.24, 0.22], pad: [0.18, 0.5], bass: [0, 0.02], arp: [0.32, 0.3], counter: [-0.36, 0.34], drum: [0, 0.07] };
 
   function noiseBuffer(ctx, sec = 2, type = 'white') {
     const len = Math.floor(ctx.sampleRate * sec);
@@ -29,15 +31,112 @@
     return buf;
   }
 
-  function impulse(ctx, sec = 2.6, decay = 2.4) {
-    const len = Math.floor(ctx.sampleRate * sec);
-    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  /* smooth "clean hall" impulse: short pre-delay, early reflections, damped exponential tail */
+  function impulse(ctx, sec = 2.3, decay = 3.0) {
+    const sr = ctx.sampleRate, len = Math.floor(sr * sec), pre = Math.floor(sr * 0.018);
+    const buf = ctx.createBuffer(2, len, sr);
     for (let c = 0; c < 2; c++) {
       const d = buf.getChannelData(c);
-      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay) * (i < 200 ? i / 200 : 1);
+      let lp = 0;
+      for (let i = pre; i < len; i++) {
+        const x = (i - pre) / (len - pre);
+        /* damping: the tail gets darker as it decays (one-pole lowpass with falling cutoff) */
+        const k = 0.55 - 0.45 * x;
+        lp += k * ((Math.random() * 2 - 1) - lp);
+        d[i] = lp * Math.pow(1 - x, decay) * (i - pre < 300 ? (i - pre) / 300 : 1);
+      }
+      [0.011, 0.019, 0.027, 0.041].forEach((t, j) => { const i = pre + Math.floor(sr * (t + c * 0.0031)); if (i < len) d[i] += (0.5 - j * 0.09) * (j % 2 ? -1 : 1); });
     }
     return buf;
   }
+
+  /* ================= sample bank (CC0 / CC BY recordings, see assets/samples/CREDITS.md) ================= */
+  const bank = { manifest: null, buffers: {}, loading: {}, decodeCtx: null };
+  async function readBytes(rel) {
+    if (window.haru && window.haru.readAsset) return window.haru.readAsset(rel);
+    try { const r = await fetch('assets/' + rel); return r.ok ? new Uint8Array(await r.arrayBuffer()) : null; } catch (e) { return null; }
+  }
+  async function manifest() {
+    if (bank.manifest) return bank.manifest;
+    if (!bank.mLoading) {
+      bank.mLoading = readBytes('samples/manifest.json')
+        .then((b) => { bank.manifest = b ? JSON.parse(new TextDecoder().decode(b)) : { instruments: {}, drums: {} }; return bank.manifest; })
+        .catch(() => { bank.manifest = { instruments: {}, drums: {} }; return bank.manifest; });
+    }
+    return bank.mLoading;
+  }
+  /* decode once at 32 kHz mono (AudioBuffers are shareable between live and offline contexts) */
+  async function decode(rel, sr = 32000) {
+    const bytes = await readBytes('samples/' + rel);
+    if (!bytes) { console.warn('sample missing', rel); return null; }
+    bank.decodeCtx = bank.decodeCtx || {};
+    const dc = bank.decodeCtx[sr] = bank.decodeCtx[sr] || new OfflineAudioContext(1, sr, sr);
+    try { return await dc.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)); } catch (e) { console.warn('sample decode failed', rel, e && e.message); return null; }
+  }
+  function loadKey(key, files) {
+    if (bank.buffers[key]) return Promise.resolve(bank.buffers[key]);
+    /* drums keep full bandwidth (crisp hats); pitched instruments are decoded at 32 kHz to save memory */
+    const sr = key.startsWith('d:') ? 44100 : 32000;
+    if (!bank.loading[key]) bank.loading[key] = Promise.all(files.map((f) => decode(f, sr))).then((bufs) => { bank.buffers[key] = bufs; return bufs; });
+    return bank.loading[key];
+  }
+  H.samples = {
+    /* names: sampled instrument ids and/or 'drums' */
+    async ensure(names) {
+      const m = await manifest();
+      const jobs = [];
+      new Set(names).forEach((n) => {
+        if (n === 'drums') Object.entries(m.drums).forEach(([d, e]) => jobs.push(loadKey('d:' + d, e.files)));
+        else if (m.instruments[n]) jobs.push(loadKey('i:' + n, m.instruments[n].zones.map((z) => z.file)));
+      });
+      await Promise.all(jobs);
+    },
+    has(name) { return !!bank.buffers['i:' + name]; },
+    list() { return bank.manifest ? Object.keys(bank.manifest.instruments) : []; },
+    zone(name, midi) {
+      const m = bank.manifest, bufs = bank.buffers['i:' + name];
+      if (!m || !bufs || !m.instruments[name]) return null;
+      const zs = m.instruments[name].zones;
+      let best = -1, bd = 1e9;
+      /* prefer pitching a sample down slightly (keeps attacks natural) */
+      zs.forEach((z, i) => { if (!bufs[i]) return; const dd = midi - z.midi; const cost = dd > 0 ? dd * 1.3 : -dd; if (cost < bd) { bd = cost; best = i; } });
+      return best < 0 ? null : { buf: bufs[best], midi: zs[best].midi + (zs[best].cents || 0) / 100 };
+    },
+    drum(name) { const b = (bank.buffers['d:' + name] || []).filter(Boolean); if (!b.length) return null; return b[Math.floor(Math.random() * b.length)]; },
+  };
+
+  /* how each sampled instrument behaves: attack, release, sustained?, tone (lowpass at full velocity), gain */
+  const SAMPLED = {
+    piano: { a: 0.002, r: 0.35, g: 1.0, tone: 9000, ko: '그랜드 피아노' },
+    epiano: { a: 0.002, r: 0.3, g: 0.9, tone: 7000, ko: 'FM 일렉 피아노' },
+    vibes: { a: 0.002, r: 0.6, g: 0.8, tone: 9000, ko: '비브라폰' },
+    marimba: { a: 0.001, r: 0.2, g: 0.9, tone: 9000, ko: '마림바' },
+    glock: { a: 0.001, r: 0.6, g: 0.42, tone: 12000, ko: '글로켄슈필' },
+    kalimba: { a: 0.001, r: 0.3, g: 0.8, tone: 9000, ko: '칼림바' },
+    sax: { a: 0.03, r: 0.18, g: 0.7, tone: 6000, sus: true, ko: '테너 색소폰' },
+    strings: { a: 0.18, r: 0.6, g: 0.7, tone: 7000, sus: true, ko: '현악 앙상블' },
+    pizz: { a: 0.001, r: 0.15, g: 0.9, tone: 8000, ko: '피치카토' },
+    upright: { a: 0.002, r: 0.12, g: 1.1, tone: 3000, ko: '콘트라베이스' },
+    harp: { a: 0.001, r: 0.5, g: 0.85, tone: 9000, ko: '하프' },
+    flute: { a: 0.05, r: 0.2, g: 0.6, tone: 8000, sus: true, ko: '플루트' },
+    clarinet: { a: 0.04, r: 0.15, g: 0.65, tone: 6000, sus: true, ko: '클라리넷' },
+    trumpet: { a: 0.015, r: 0.12, g: 0.55, tone: 7000, sus: true, ko: '트럼펫' },
+    horn: { a: 0.06, r: 0.3, g: 0.6, tone: 5000, sus: true, ko: '호른' },
+    ebass: { a: 0.002, r: 0.08, g: 1.1, tone: 2600, ko: '일렉 베이스' },
+    nylon: { a: 0.001, r: 0.25, g: 0.9, tone: 7000, ko: '나일론 기타' },
+    acoustic: { a: 0.001, r: 0.25, g: 0.8, tone: 8000, ko: '어쿠스틱 기타' },
+    eguitar: { a: 0.001, r: 0.2, g: 0.7, tone: 5000, ko: '일렉 기타 (클린)' },
+  };
+  /* synth names that should use a recording when one is loaded */
+  const PREFER = { piano: 'piano', epiano: 'epiano', nylon: 'nylon', flute: 'flute', clarinet: 'clarinet', brass: 'trumpet', strings: 'strings', kalimba: 'kalimba', marimba: 'marimba', upright: 'upright', bass: 'ebass', bell: 'vibes' };
+  H.SAMPLED = SAMPLED;
+  H.sampleFor = (name) => (SAMPLED[name] ? name : PREFER[name]) || null;
+  const SYNTH_KO = { chip: '칩 사운드(네모파)', chipbass: '칩 베이스(삼각파)', pad: '신스 패드', synthlead: '신스 리드', pluck: '신스 플럭', organ: '오르간', bandoneon: '반도네온', tanpura: '탄푸라', sitar: '시타르', oud: '우드', gayageum: '가야금', metal: '메탈 공', whistle: '휘슬', synthbass: '신스 베이스', sub: '서브 베이스', logdrum: '로그 드럼', drone: '드론' };
+  H.instKo = (name) => { const id = H.sampleFor(name); return (id && SAMPLED[id].ko) || SYNTH_KO[name] || name; };
+
+  /* drum names used by patterns → sampled kit voices (layered with a soft synth body where it helps) */
+  H.DEFAULT_KIT = { k: 'kick', s: 'snare', h: 'hat', o: 'hatOpen', c: 'clap', r: 'rim', sh: 'shaker', cl: 'claves', cg: 'congaHi', cgl: 'congaLo', bell: 'agogo', tbl: 'frameLo', tk: 'tomLo', tam: 'tamb', gong: 'gong', log: 'slit', crash: 'crash' };
+  const KIT_GAIN = { kick: 0.7, snare: 0.5, snareSoft: 0.6, hat: 0.3, hatOpen: 0.26, clap: 0.42, rim: 0.4, shaker: 0.3, tamb: 0.3, claves: 0.38, congaHi: 0.55, congaLo: 0.6, bongo: 0.5, agogo: 0.32, cowbell: 0.28, darbuka: 0.55, frameLo: 0.7, tomLo: 0.6, slit: 0.6, crash: 0.26, gong: 0.45, triangle: 0.28 };
 
   /* ================= voices (work on any BaseAudioContext) ================= */
   H.makeVoices = function (ctx) {
@@ -118,16 +217,16 @@
       epiano: (t, f, d, v, out) => { fm(t, f, d, v * 0.55, out, 1, 1.6, 1.8, { sus: 0.25, rel: 0.5, hold: true }); fm(t, f * 2, d, v * 0.08, out, 1, 0.5, 0.6, {}); },
       piano: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.5, out, { waves: ['triangle', 'sine'], mults: [1, 2], fStart: 10, fEnd: 2.5, fTime: 0.4, a: 0.003, d: 1.2, s: 0.2, r: 0.4 }); },
       nylon: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.55, out, { waves: ['triangle', 'sawtooth'], mults: [1, 1], fStart: 7, fEnd: 1.6, fTime: 0.12, a: 0.002, d: 0.7, s: 0.1, r: 0.35 }); },
-      pluck: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.45, out, { waves: ['sawtooth'], fStart: 9, fEnd: 1.4, fTime: 0.08, q: 2, a: 0.002, d: 0.35, s: 0.05, r: 0.2 }); },
+      pluck: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.45, out, { waves: ['triangle', 'sawtooth'], mults: [1, 1], fStart: 6, fEnd: 1.3, fTime: 0.08, q: 0.9, a: 0.002, d: 0.35, s: 0.05, r: 0.2 }); },
       flute: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.5, out, { waves: ['sine', 'triangle'], mults: [1, 2], fStart: 5, a: 0.07, d: 0.2, s: 0.85, r: 0.15, vib: [5.2, 0.008, 0.3], breath: 0.15 }); },
       whistle: (t, f, d, v, out) => { subtractive(t, f * 2, d, v * 0.4, out, { waves: ['sine'], fStart: 6, a: 0.03, d: 0.1, s: 0.9, r: 0.08, vib: [6.5, 0.01, 0.15], breath: 0.1, bendFrom: 0.97, bendTime: 0.05 }); },
       clarinet: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.35, out, { waves: ['square'], fStart: 3.5, q: 1.2, a: 0.03, d: 0.2, s: 0.8, r: 0.12, vib: [5, 0.005, 0.3] }); },
       brass: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.4, out, { waves: ['sawtooth', 'sawtooth'], detune: 7, fStart: 1.5, fEnd: 5, fTime: 0.06, q: 1.5, a: 0.03, d: 0.25, s: 0.7, r: 0.12, vib: [5.5, 0.004, 0.35] }); },
       organ: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.32, out, { waves: ['sine', 'sine', 'sine', 'sine'], mults: [1, 2, 3, 4], fStart: 12, a: 0.008, d: 0.05, s: 1, r: 0.06, vib: [6.8, 0.002, 0.05] }); },
-      synthlead: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.33, out, { waves: ['sawtooth', 'square'], detune: 9, fStart: 2, fEnd: 6, fTime: 0.1, q: 3, a: 0.01, d: 0.25, s: 0.6, r: 0.18, vib: [5.5, 0.006, 0.3] }); },
+      synthlead: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.3, out, { waves: ['sawtooth', 'triangle'], detune: 6, fStart: 1.6, fEnd: 3.6, fTime: 0.12, q: 0.9, a: 0.01, d: 0.25, s: 0.6, r: 0.18, vib: [5.5, 0.006, 0.3] }); },
       bandoneon: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.3, out, { waves: ['sawtooth', 'square'], mults: [1, 2], detune: 12, ft: 'bandpass', fStart: 3, q: 0.9, a: 0.05, d: 0.2, s: 0.85, r: 0.15, vib: [4, 0.003, 0.5] }); },
       strings: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.25, out, { waves: ['sawtooth', 'sawtooth', 'sawtooth'], detune: 11, fStart: 4, q: 0.5, a: 0.35, d: 0.5, s: 0.8, r: 0.8, vib: [5, 0.003, 0.6] }); },
-      pad: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.25, out, { waves: ['sawtooth', 'triangle', 'sawtooth'], detune: 14, fStart: 2.2, fEnd: 3.5, fTime: 1.5, q: 0.6, a: 0.7, d: 1, s: 0.8, r: 1.4 }); },
+      pad: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.25, out, { waves: ['triangle', 'sine', 'sawtooth'], detune: 9, fStart: 1.6, fEnd: 2.6, fTime: 1.5, q: 0.5, a: 0.7, d: 1, s: 0.8, r: 1.4 }); },
       tanpura: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.25, out, { waves: ['sawtooth'], ft: 'bandpass', fStart: 8, fEnd: 3, fTime: 1.2, q: 4, a: 0.02, d: 2, s: 0.5, r: 1.5 }); },
       sitar: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.4, out, { waves: ['sawtooth', 'sawtooth'], mults: [1, 2.003], ft: 'bandpass', fStart: 6, fEnd: 2.5, fTime: 0.5, q: 6, a: 0.003, d: 1.4, s: 0.2, r: 0.6, bendFrom: 0.96, bendTime: 0.12, vib: [6, 0.004, 0.5] }); },
       oud: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.5, out, { waves: ['triangle', 'sawtooth'], fStart: 5, fEnd: 1.2, fTime: 0.1, q: 1.5, a: 0.002, d: 0.45, s: 0.08, r: 0.25, bendFrom: 1.015, bendTime: 0.05 }); },
@@ -141,6 +240,8 @@
       synthbass: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.5, out, { waves: ['sawtooth'], fStart: 10, fEnd: 2.5, fTime: 0.08, q: 4, a: 0.004, d: 0.2, s: 0.5, r: 0.06 }); },
       sub: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.9, out, { waves: ['sine'], fStart: 20, a: 0.004, d: 0.8, s: 0.7, r: 0.15, bendFrom: 1.6, bendTime: 0.04 }); },
       logdrum: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.8, out, { waves: ['sine', 'triangle'], fStart: 6, a: 0.003, d: 0.35, s: 0.3, r: 0.1, bendFrom: 1.9, bendTime: 0.05 }); },
+      chip: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.22, out, { waves: ['square'], fStart: 30, a: 0.002, d: 0.08, s: 0.7, r: 0.04 }); },
+      chipbass: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.7, out, { waves: ['triangle'], fStart: 30, a: 0.002, d: 0.1, s: 0.9, r: 0.03 }); },
       drone: (t, f, d, v, out) => { subtractive(t, f, d, v * 0.35, out, { waves: ['sawtooth', 'sawtooth'], detune: 6, fStart: 3, q: 0.5, a: 0.6, d: 1, s: 0.8, r: 1.5 }); },
     };
 
@@ -182,9 +283,58 @@
       c.connect(g); g.connect(out); c.start(t); m.start(t); c.stop(t + 4.1); m.stop(t + 4.1);
     }
 
+    /* one recorded note: nearest zone, repitched by playbackRate; velocity drives level and brightness */
+    function sampled(id, t, midi, dur, v, out) {
+      const z = H.samples.zone(id, midi);
+      if (!z) return false;
+      const o = SAMPLED[id] || {};
+      const src = ctx.createBufferSource(); src.buffer = z.buf;
+      const rate = Math.pow(2, (midi - z.midi) / 12);
+      src.playbackRate.value = rate;
+      const left = z.buf.duration / rate;
+      const vel = H.clamp(v, 0.02, 1.2);
+      const g = gain(0);
+      const peak = Math.pow(vel, 1.35) * (o.g || 1) * 0.9;
+      const a = o.a || 0.002;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a);
+      /* sustained instruments hold for the note; struck ones ring a little past it, then get damped */
+      const hold = o.sus ? Math.min(dur, left - 0.05) : Math.min(left, Math.max(dur, 0.12) + 0.18);
+      const endT = t + Math.max(a + 0.02, hold);
+      const rel = o.r || 0.2;
+      g.gain.setValueAtTime(peak, endT); g.gain.setTargetAtTime(0.0001, endT, rel / 3);
+      g.gain.setValueAtTime(0, endT + rel * 1.6);
+      if (o.tone && o.tone < 4000) { const lp = filt('lowpass', o.tone * (0.5 + 0.5 * Math.min(1, vel)), 0.5); src.connect(lp); lp.connect(g); }
+      else src.connect(g);
+      g.connect(out);
+      src.start(t); src.stop(endT + rel * 1.6 + 0.02);
+      src.onended = () => { try { g.disconnect(); } catch (e) { /* */ } };
+      return true;
+    }
+    function sampledHit(name, t, v, out) {
+      const buf = H.samples.drum(name);
+      if (!buf) return false;
+      const src = ctx.createBufferSource(); src.buffer = buf; src.playbackRate.value = 1 + (Math.random() - 0.5) * 0.02;
+      const g = gain(Math.pow(H.clamp(v, 0, 1.2), 1.2) * (KIT_GAIN[name] || 0.5));
+      src.connect(g); g.connect(out); src.start(t);
+      src.onended = () => { try { g.disconnect(); } catch (e) { /* */ } };
+      return true;
+    }
+    /* a clean, round kick body under the recorded (concert) bass drum */
+    function softKick(t, v, out) { toneHit(t, v, out, 110, 48, 0.3, 'sine', 0.06, 0.8); }
+
     return {
-      play(name, t, midi, durSec, v, out) { (insts[name] || insts.epiano)(t, H.midiFreq(midi), durSec, v, out); },
-      hit(name, t, v, out) { (drums[name] || drums.h)(t, v, out); },
+      play(name, t, midi, durSec, v, out) {
+        const id = H.sampleFor(name);
+        if (id && sampled(id, t, midi, durSec, v, out)) return;
+        (insts[name] || insts.epiano)(t, H.midiFreq(midi), durSec, v, out);
+      },
+      /* kit: pattern name → sample voice (missing/null = synth voice) */
+      hit(name, t, v, out, kit, crash) {
+        const k = kit || H.DEFAULT_KIT;
+        const sn = crash ? k.crash : k[name];
+        if (sn && sampledHit(sn, t, v, out)) { if (name === 'k' && !crash) softKick(t, v * (k.kickBody ?? 0.8), out); return; }
+        (drums[name] || drums.h)(t, v, out);
+      },
       nodes,
     };
   };
@@ -196,30 +346,53 @@
     const wl = ctx.createOscillator(); wl.frequency.value = 0.45; const wlg = ctx.createGain(); wlg.gain.value = 0;
     wl.connect(wlg); wlg.connect(wobble.delayTime); wl.start();
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.4;
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 35;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 32;
+    /* gentle "polish": a touch of warmth, slightly tamed air (no harsh fizz) */
+    const warm = ctx.createBiquadFilter(); warm.type = 'lowshelf'; warm.frequency.value = 160; warm.gain.value = 1.2;
+    const air = ctx.createBiquadFilter(); air.type = 'highshelf'; air.frequency.value = 9500; air.gain.value = -2;
     const sat = ctx.createWaveShaper();
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3.2; comp.attack.value = 0.01; comp.release.value = 0.2;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.knee.value = 12; comp.ratio.value = 2.2; comp.attack.value = 0.02; comp.release.value = 0.25;
     const out = ctx.createGain(); out.gain.value = 0.9;
+    const limit = ctx.createDynamicsCompressor(); limit.threshold.value = -4; limit.knee.value = 2; limit.ratio.value = 16; limit.attack.value = 0.003; limit.release.value = 0.12;
     const verb = ctx.createConvolver(); verb.buffer = impulse(ctx);
     const verbIn = ctx.createGain(); const verbOut = ctx.createGain();
-    input.connect(wobble); wobble.connect(lp); lp.connect(hp); hp.connect(sat); sat.connect(comp); comp.connect(out); out.connect(dest);
-    input.connect(verbIn); verbIn.connect(verb); verb.connect(verbOut); verbOut.connect(comp);
+    const verbHp = ctx.createBiquadFilter(); verbHp.type = 'highpass'; verbHp.frequency.value = 220;
+    input.connect(wobble); wobble.connect(lp); lp.connect(hp); hp.connect(warm); warm.connect(air); air.connect(sat); sat.connect(comp); comp.connect(out); out.connect(limit); limit.connect(dest);
+    verbIn.connect(verbHp); verbHp.connect(verb); verb.connect(verbOut); verbOut.connect(comp);
     const chain = {
-      input, out, comp,
+      input, out, comp, verbIn,
       setFx(f) {
         const lofi = H.clamp(f.lofi ?? 0.2);
         lp.frequency.value = 18000 * Math.pow(1 - lofi, 2.2) + 2200;
-        wlg.gain.value = 0.0018 * lofi;
-        const k = 1 + lofi * 6;
-        const curve = new Float32Array(1024);
-        for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(k * x) / Math.tanh(k); }
-        sat.curve = curve;
-        verbIn.gain.value = H.clamp(f.reverb ?? 0.25) * 0.9;
-        verbOut.gain.value = 0.7;
+        wlg.gain.value = lofi > 0.3 ? 0.0018 * lofi : 0;
+        /* saturation only when the piece actually wants tape colour */
+        if (lofi > 0.35) {
+          const k = 1 + (lofi - 0.35) * 6;
+          const curve = new Float32Array(1024);
+          for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(k * x) / Math.tanh(k); }
+          sat.curve = curve;
+        } else sat.curve = null;
+        air.gain.value = f.air ?? -2;
+        verbIn.gain.value = H.clamp(f.reverb ?? 0.25) * 2.2;
+        verbOut.gain.value = 0.6;
       },
     };
     chain.setFx(fx || {});
     return chain;
+  }
+
+  /* per-track buses: gain → pan → chain, plus a reverb send */
+  function makeBuses(ctx, chain) {
+    const b = {};
+    Object.keys(SEAT).forEach((k) => {
+      const g = ctx.createGain(); g.gain.value = k === 'drum' ? 0.9 : 1;
+      const pan = ctx.createStereoPanner(); pan.pan.value = SEAT[k][0];
+      const send = ctx.createGain(); send.gain.value = SEAT[k][1];
+      g.connect(pan); pan.connect(chain.input); pan.connect(send); send.connect(chain.verbIn);
+      b[k] = g; b[k + 'Pan'] = pan; b[k + 'Send'] = send;
+    });
+    b.setSeats = (seats = {}) => Object.keys(SEAT).forEach((k) => { const v = seats[k] || SEAT[k]; b[k + 'Pan'].pan.value = v[0]; b[k + 'Send'].gain.value = v[1]; });
+    return b;
   }
 
   function stepTime(song, i, t0) {
@@ -228,15 +401,27 @@
     return t0 + i * sd + swingOff;
   }
 
-  function scheduleEvent(voices, song, ev, t, sd, outs) {
+  function scheduleEvent(voices, song, ev, t, sd, buses) {
     if (ev.n) {
-      voices.hit(ev.n, t + (Math.random() - 0.5) * 0.004, ev.v * 0.85, outs.drum);
+      voices.hit(ev.n, t + (Math.random() - 0.5) * 0.004, ev.v * 0.85, buses.drum, song.kit, ev.crash);
     } else {
-      const inst = ev.t === 'lead' ? song.insts.lead : ev.t === 'chord' ? song.insts.chord : ev.t === 'pad' ? song.insts.pad : song.insts.bass;
+      const tr = ev.t || 'lead';
+      const inst = song.insts[tr];
       if (!inst) return;
-      voices.play(inst, t + (Math.random() - 0.5) * 0.006, ev.p, ev.d * sd * 0.95, ev.v * (TRACK_GAIN[ev.t] || 0.6) * (ev.by === 'you' ? 1.15 : 1), outs.music);
+      const human = (Math.random() - 0.5) * 0.006;
+      const v = ev.v * (TRACK_GAIN[tr] || 0.6) * (ev.by === 'you' ? 1.15 : 1);
+      voices.play(inst, t + human, ev.p, ev.d * sd * 0.95, v, buses[tr] || buses.lead);
+      /* octave doubling (e.g. glockenspiel over the piano lead) */
+      if (tr === 'lead' && song.insts.double) voices.play(song.insts.double, t + human, ev.p + 12, Math.min(ev.d * sd, 0.6), v * 0.42, buses.arp);
     }
   }
+
+  /* recorded instruments a song needs */
+  H.songSamples = function (song) {
+    const out = ['drums'];
+    Object.values(song.insts || {}).forEach((n) => { const id = n && H.sampleFor(n); if (id) out.push(id); });
+    return out;
+  };
 
   /* ================= offline render ================= */
   H.renderSong = async function (song, opts = {}) {
@@ -247,14 +432,14 @@
     master.gain.setValueAtTime(0, 0); master.gain.linearRampToValueAtTime(1, 0.05);
     master.gain.setValueAtTime(1, dur - 2.5); master.gain.linearRampToValueAtTime(0, dur - 0.1);
     const chain = makeChain(ctx, master, song.fx);
+    const buses = makeBuses(ctx, chain); buses.setSeats(song.seats);
+    await H.samples.ensure(H.songSamples(song)).catch(() => {});
     const voices = H.makeVoices(ctx);
     const sd = H.stepSec(song);
-    const drumBus = ctx.createGain(); drumBus.gain.value = 0.9; drumBus.connect(chain.input);
     if ((song.fx.lofi || 0) > 0.3) {
       const cr = ctx.createBufferSource(); cr.buffer = crackleBuffer(ctx); cr.loop = true;
       const cg = ctx.createGain(); cg.gain.value = 0.25 * song.fx.lofi; cr.connect(cg); cg.connect(master); cr.start(0); cr.stop(dur);
     }
-    const outs = { music: chain.input, drum: drumBus };
     const t0 = 0.15;
     /* Schedule just-in-time with suspend(): pre-scheduling every voice makes Chromium
        process all pending nodes on every block (quadratic cost). */
@@ -263,13 +448,13 @@
     const scheduleUntil = (tEnd) => {
       while (nextStep < song.totalSteps && stepTime(song, nextStep, t0) < tEnd) {
         const evs = song.byStep[nextStep];
-        if (evs && evs.length) { const t = stepTime(song, nextStep, t0); evs.forEach((ev) => scheduleEvent(voices, song, ev, t, sd, outs)); }
+        if (evs && evs.length) { const t = stepTime(song, nextStep, t0); evs.forEach((ev) => scheduleEvent(voices, song, ev, t, sd, buses)); }
         nextStep++;
       }
       if (nextStep >= song.totalSteps && !scheduleUntil.ringDone) {
         scheduleUntil.ringDone = true;
         const lastChord = song.chords[song.chords.length - 1];
-        if (lastChord && song.insts.chord) lastChord.notes.forEach((p) => voices.play(song.insts.chord || 'pad', stepTime(song, song.totalSteps, t0), p, 1.8, 0.25, chain.input));
+        if (lastChord && song.insts.chord) lastChord.notes.forEach((p) => voices.play(song.insts.chord || 'pad', stepTime(song, song.totalSteps, t0), p, 1.8, 0.25, buses.chord));
       }
     };
     const hook = (tSusp) => {
@@ -283,7 +468,11 @@
     };
     scheduleUntil(WIN * 2);
     hook(WIN);
-    return ctx.startRendering();
+    const buf = await ctx.startRendering();
+    let peak = 0;
+    for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) { const a = d[i] < 0 ? -d[i] : d[i]; if (a > peak) peak = a; } }
+    if (peak > 0.05) { const k = 0.89 / peak; for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] *= k; } }
+    return buf;
   };
 
   /* ================= live engine ================= */
@@ -302,12 +491,12 @@
       this.musicGain.connect(this.master);
       this.musicGain.connect(this.analyser);
       this.musicGain.connect(this.splitter); this.splitter.connect(this.anL, 0); this.splitter.connect(this.anR, 1);
-      this.drumBus = ctx.createGain(); this.drumBus.gain.value = 0.9; this.drumBus.connect(this.chain.input);
+      this.buses = makeBuses(ctx, this.chain);
+      H.samples.ensure(['piano', 'epiano', 'ebass', 'strings', 'vibes', 'drums']).catch(() => {});
       this.ambGain = ctx.createGain(); this.ambGain.connect(this.master);
       this.sfxGain = ctx.createGain(); this.sfxGain.connect(this.master);
       this.voices = H.makeVoices(ctx);
-      this.duck = ctx.createGain(); this.duck.connect(this.chain.input);
-      this.buildAmbience();
+            this.buildAmbience();
       this.applyLevels();
       this.timer = setInterval(() => this.tick(), 25);
       this.ambTimer = setInterval(() => this.ambientTick(), 120);
@@ -329,7 +518,9 @@
     play(song, opts = {}) {
       this.init(); this.resume();
       this.song = song; this.opts = opts;
-      this.chain.setFx(Object.assign({}, song.fx, opts.lofi != null ? { lofi: Math.max(song.fx.lofi, opts.lofi) } : {}));
+      this.chain.setFx(Object.assign({}, song.fx, opts.lofi != null && song.lofiOk !== false ? { lofi: Math.max(song.fx.lofi, opts.lofi) } : {}));
+      this.buses.setSeats(song.seats);
+      H.samples.ensure(H.songSamples(song)).catch(() => {});
       this.step = opts.from ?? (opts.loop ? opts.loop[0] : 0);
       this.t0 = this.ctx.currentTime + 0.08 - this.step * H.stepSec(song);
       this.nextTime = this.ctx.currentTime + 0.08;
@@ -351,7 +542,7 @@
         const swingOff = song.beatSteps === 4 && i % 2 === 1 ? (song.swing - 0.5) * sd * 2 * 0.9 : 0;
         const t = Math.max(ctx.currentTime, this.nextTime + swingOff);
         const f = this.opts.filter;
-        evs.forEach((ev) => { if (!f || f(ev)) scheduleEvent(this.voices, song, ev, t, sd, { music: this.chain.input, drum: this.drumBus }); });
+        evs.forEach((ev) => { if (!f || f(ev)) scheduleEvent(this.voices, song, ev, t, sd, this.buses); });
         this.queue.push({ step: i, time: this.nextTime });
         if (this.queue.length > 64) this.queue.shift();
         this.nextTime += sd;
@@ -376,8 +567,8 @@
     }
 
     /* ----- audition / sfx ----- */
-    note(midi, inst = 'epiano', dur = 0.5, v = 0.6) { this.init(); this.resume(); this.voices.play(inst, this.ctx.currentTime + 0.01, midi, dur, v, this.chain.input); }
-    drum(name, v = 0.8) { this.init(); this.resume(); this.voices.hit(name, this.ctx.currentTime + 0.01, v, this.drumBus); }
+    note(midi, inst = 'epiano', dur = 0.5, v = 0.6) { this.init(); this.resume(); this.voices.play(inst, this.ctx.currentTime + 0.01, midi, dur, v, this.buses.lead); }
+    drum(name, v = 0.8, kit) { this.init(); this.resume(); this.voices.hit(name, this.ctx.currentTime + 0.01, v, this.buses.drum, kit || (this.song && this.song.kit)); }
 
     sfx(kind) {
       this.init(); this.resume();

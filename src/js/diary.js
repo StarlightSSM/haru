@@ -45,6 +45,7 @@
     if (world.mood.valence < -0.25) lines.push('무거운 소식이 많아서, 음악은 일부러 천천히 숨 쉬게 만들었어.');
     else if (world.mood.valence > 0.25) lines.push('좋은 소식들이 있어서 손끝이 가벼웠어.');
     lines.push(`그래서 ${g.region}에서 온 ${H.josa(g.ko, '으로/로')} 곡을 만들었어. ${song.keyName} ${song.scaleKo}, ${song.bpm} BPM. 제목은 「${song.title}」.`);
+    if (song.styleKo) lines.push(`소리는 내 취향대로 ‘${song.styleKo}’ 느낌으로 골랐어 — ${H.songInstKo(song)}.`);
     if (song.motifs[0]) lines.push(`첫 멜로디는 '${song.motifs[0].word}'${J(song.motifs[0].word, '이라는/라는')} 단어의 글자들로 만들었어 (${song.motifs[0].names.slice(0, 4).join(' ')}).`);
     lines.push(r.pick([
       `그림은 ${art.styleKo} 스타일. 사람들이 같은 걸 이야기할 때 점들이 모이는 게 보였거든.`,
@@ -76,7 +77,7 @@
         petName, date: H.dateKey(), weather: world.weather ? `${world.weather.ko} ${Math.round(world.weather.temp)}°C` : null,
         mood: { word: H.moodWords(world.mood).ko, ...Object.fromEntries(Object.entries(world.mood).map(([k, v]) => [k, Math.round(v * 100) / 100])) },
         keywords: world.keywords.slice(0, 12).map((k) => k.w), headlines: world.headlines.slice(0, 8).map((h) => h.title),
-        music: { genre: song.genreKo, region: H.GENRE[song.genreId].region, key: `${song.keyName} ${song.scaleKo}`, bpm: song.bpm, motifWord: song.motifs[0] && song.motifs[0].word },
+        music: { genre: song.genreKo, style: song.styleKo || null, instruments: H.songInstKo(song), region: H.GENRE[song.genreId].region, key: `${song.keyName} ${song.scaleKo}`, bpm: song.bpm, motifWord: song.motifs[0] && song.motifs[0].word },
         art: art.styleKo, userInvolvement: log, draftTitle: song.title,
       };
       const res = await window.haru.aiDiary(payload);

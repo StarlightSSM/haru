@@ -1121,11 +1121,14 @@
     autoCamera(dt);
   }
 
-  let camTimer = 0, camPick = 'wide';
+  let camTimer = 0, camPick = 'wide', camKey = '';
   function autoCamera(dt) {
     if (app.camMode !== 'auto') return;
     camTimer -= dt;
     const cr = app.creation, pet = app.pet;
+    /* re-frame as soon as the pet settles somewhere new or the work phase changes */
+    const key = (pet.target ? 'moving' : pet.spot) + '|' + (cr.state === 'running' ? cr.phaseInfo.ph.id : cr.state);
+    if (key !== camKey) { camKey = key; if (!pet.target) camTimer = 0; }
     if (camTimer <= 0) {
       camTimer = 10 + Math.random() * 10;
       let base = 'wide';

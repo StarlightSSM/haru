@@ -372,7 +372,44 @@ async function runShots() {
   const cap = async (name) => { const img = await mainWin.webContents.capturePage(); fs.writeFileSync(path.join(dir, name + '.png'), img.toPNG()); };
   const plan = process.env.HARU_SHOT_PLAN || 'basic';
   await wait(5000);
-  if (plan === 'basic') {
+  if (plan === 'readme') {
+    /* README walkthrough: first run → idle room → a full day of work → every tab → mini avatar */
+    const js = (code) => mainWin.webContents.executeJavaScript(code).catch(() => null);
+    const phase = () => js(`(() => { const c = H.app.creation; return c.state + ':' + c.phaseInfo.ph.id + ':' + Math.round(c.progress * 100); })()`);
+    const until = async (pred, max = 120000) => { const t0 = Date.now(); while (Date.now() - t0 < max) { const p = await phase(); if (p && pred(p)) return p; await wait(500); } return null; };
+    await wait(6000); await cap('01_first_run');
+    await js(`document.querySelector('.modal-foot .btn.primary').click()`);
+    send('cmd', { time: 14 }); send('cmd', { noAuto: true });
+    await wait(4500); await cap('02_room_day');
+    send('cmd', { cam: 'close' }); await wait(3500); await cap('03_cam_close');
+    send('cmd', { cam: 'window' }); await wait(3500); await cap('04_cam_window');
+    send('cmd', { time: 18.6 }); send('cmd', { cam: 'wide' }); await wait(4000); await cap('05_room_sunset');
+    send('cmd', { time: 22.5 }); await wait(4000); await cap('06_room_night');
+    send('cmd', { time: 14 }); await wait(1500);
+    send('cmd', { settings: true }); await wait(1800); await cap('07_settings'); send('cmd', { closeModal: true }); await wait(800);
+    send('cmd', { view: 'taste' }); await wait(1800); await cap('08_taste');
+    send('cmd', { view: 'lab' }); await wait(1800); await cap('09_lab');
+    send('cmd', { view: 'room' }); await wait(500);
+    const clicked = await js(`(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('응, 시작하자')); if (b) { b.click(); return true; } return false; })()`);
+    if (!clicked) send('cmd', { create: true });
+    await until((p) => /gather/.test(p) && +p.split(':')[2] >= 4, 30000); await wait(2500); await cap('10_work_gather');
+    await until((p) => /think|compose/.test(p), 60000); send('cmd', { view: 'world' }); await wait(7000); await cap('11_world');
+    send('cmd', { view: 'room' });
+    await until((p) => /compose/.test(p) && +p.split(':')[2] >= 34, 60000); await cap('12_work_compose');
+    send('cmd', { view: 'studio' }); await wait(1500); await cap('13_studio'); send('cmd', { view: 'room' });
+    send('cmd', { intervene: { kind: 'note', midi: 79 } }); await wait(400); await cap('14_prank_note');
+    await until((p) => /paint/.test(p) && +p.split(':')[2] >= 76, 60000);
+    send('cmd', { intervene: { kind: 'splash', x: 0.45, y: 0.5, color: '#ff4f8b' } }); await wait(900); await cap('15_prank_splash');
+    send('cmd', { tool: 'pat' }); await wait(700); await cap('16_pat');
+    await until((p) => /finalizing/.test(p), 60000); await wait(1200); await cap('17_finalizing');
+    await until((p) => /^done/.test(p), 120000); await wait(4000); await cap('18_done');
+    send('cmd', { view: 'archive' }); await wait(2500); await cap('19_archive');
+    send('cmd', { view: 'shop' }); await wait(1800); await cap('20_shop');
+    send('cmd', { view: 'room' }); send('cmd', { creator: true }); await wait(4000); await cap('21_creator'); send('cmd', { closeModal: true });
+    hideMainToMini(); await wait(4000);
+    if (miniWin) { const img = await miniWin.webContents.capturePage(); fs.writeFileSync(path.join(dir, '22_mini.png'), img.toPNG()); }
+    quitting = true; app.quit();
+  } else if (plan === 'basic') {
     await cap('01_room');
     for (const [i, v] of ['world', 'studio', 'lab', 'taste', 'archive', 'shop'].entries()) { send('cmd', { view: v }); await wait(1800); await cap(`0${i + 2}_${v}`); }
     send('cmd', { view: 'room' }); send('cmd', { cam: 'close' }); await wait(3000); await cap('08_close');

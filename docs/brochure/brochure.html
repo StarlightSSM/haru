@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>HARU — 서비스 소개</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --ink: #16181d; --muted: #6b7079; --line: #d9d6cf; --paper: #f6f4ef; --accent: #2f45ff; --soft: #eceaf9; --warm: #ff8a3d; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; color: var(--ink); }
+  body { font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 10.2pt; line-height: 1.62; -webkit-print-color-adjust: exact; print-color-adjust: exact; word-break: keep-all; }
+  .mono { font-family: 'Consolas', 'D2Coding', monospace; letter-spacing: .04em; }
+  .page { width: 210mm; height: 297mm; padding: 18mm 17mm 16mm; position: relative; overflow: hidden; page-break-after: always; background: #fff; }
+  .page:last-child { page-break-after: auto; }
+  .folio { position: absolute; left: 17mm; right: 17mm; bottom: 9mm; display: flex; justify-content: space-between; font: 7.5pt 'Consolas', monospace; color: var(--muted); letter-spacing: .08em; border-top: 1px solid var(--line); padding-top: 2.5mm; }
+  .kicker { font: 8pt 'Consolas', monospace; letter-spacing: .14em; color: var(--accent); text-transform: uppercase; margin: 0 0 2mm; }
+  h1 { font-size: 22pt; line-height: 1.25; margin: 0 0 4mm; letter-spacing: -.01em; }
+  h2 { font-size: 13pt; margin: 6mm 0 2mm; }
+  h3 { font-size: 10.6pt; margin: 0 0 1mm; }
+  p { margin: 0 0 2.6mm; }
+  .lead { font-size: 11.2pt; color: #2b2e35; }
+  .muted { color: var(--muted); }
+  .small { font-size: 8.6pt; }
+  img.shot { display: block; width: 100%; border-radius: 2.2mm; border: 1px solid var(--line); }
+  figure { margin: 0; }
+  figcaption { font-size: 8.2pt; color: var(--muted); margin-top: 1.4mm; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; }
+  .card { border: 1px solid var(--line); border-radius: 2.4mm; padding: 4mm 4.4mm; background: #fff; }
+  .card.soft { background: var(--paper); border-color: transparent; }
+  .dot { display: inline-block; width: 2.2mm; height: 2.2mm; border-radius: 50%; background: var(--accent); margin-right: 1.6mm; vertical-align: .3mm; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.9pt; }
+  th, td { text-align: left; vertical-align: top; padding: 1.6mm 2mm; border-bottom: 1px solid var(--line); }
+  th { font: 7.6pt 'Consolas', monospace; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; font-weight: 400; }
+  .tag { display: inline-block; font-size: 7.8pt; border: 1px solid var(--line); border-radius: 99px; padding: 0 2mm; margin: 0 1mm .8mm 0; color: #3b3f47; }
+  .pill { display: inline-block; font: 7.6pt 'Consolas', monospace; background: var(--soft); color: var(--accent); border-radius: 99px; padding: .4mm 2.2mm; letter-spacing: .06em; }
+
+  /* cover */
+  .cover { background: var(--paper); padding: 0; }
+  .cover .top { padding: 20mm 17mm 0; }
+  .brand { display: flex; align-items: center; gap: 2.4mm; font: 700 11pt 'Consolas', monospace; letter-spacing: .4em; }
+  .brand i { width: 3mm; height: 3mm; border-radius: 50%; background: var(--accent); display: inline-block; }
+  .brand i + i { background: #58b4ff; margin-left: -1mm; }
+  .cover h1 { font-size: 34pt; margin: 16mm 0 5mm; line-height: 1.15; }
+  .cover h1 span { color: var(--accent); }
+  .cover .lead { max-width: 150mm; font-size: 12pt; }
+  .cover .hero { position: absolute; left: 17mm; right: 17mm; bottom: 34mm; }
+  .cover .hero img { box-shadow: 0 6mm 14mm rgba(20, 22, 40, .18); border: 0; }
+  .cover .meta { position: absolute; left: 17mm; right: 17mm; bottom: 14mm; display: flex; justify-content: space-between; font: 8pt 'Consolas', monospace; color: var(--muted); letter-spacing: .08em; }
+  .chips { margin-top: 6mm; display: flex; gap: 2mm; flex-wrap: wrap; }
+  .chips span { font-size: 9pt; background: #fff; border: 1px solid var(--line); border-radius: 99px; padding: .8mm 3.2mm; }
+
+  /* flow */
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin: 4mm 0 2mm; }
+  .flow .step { position: relative; padding: 3.6mm 3mm 3.4mm; border: 1px solid var(--line); border-right: 0; background: #fff; }
+  .flow .step:first-child { border-radius: 2.4mm 0 0 2.4mm; }
+  .flow .step:last-child { border-right: 1px solid var(--line); border-radius: 0 2.4mm 2.4mm 0; background: var(--soft); }
+  .flow .n { font: 7.6pt 'Consolas', monospace; color: var(--accent); letter-spacing: .1em; }
+  .flow b { display: block; font-size: 10.4pt; margin: .6mm 0 .8mm; }
+  .flow small { display: block; font-size: 8pt; color: var(--muted); line-height: 1.45; }
+  .flow .step:not(:last-child)::after { content: ''; position: absolute; right: -2.1mm; top: 50%; width: 3.6mm; height: 3.6mm; background: #fff; border-top: 1px solid var(--line); border-right: 1px solid var(--line); transform: translateY(-50%) rotate(45deg); z-index: 2; }
+  .outputs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-top: 3mm; }
+  .outputs div { border: 1px dashed #b9b5ad; border-radius: 2mm; padding: 2.6mm 3mm; }
+  .outputs code { font: 8.4pt 'Consolas', monospace; color: var(--accent); }
+  .outputs small { display: block; font-size: 8pt; color: var(--muted); }
+
+  .quote { border-left: 2px solid var(--accent); padding: 1mm 0 1mm 4mm; color: #2b2e35; font-size: 9.6pt; margin: 3mm 0; }
+  .styles td:first-child { white-space: nowrap; font-weight: 700; }
+  .swatch { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: .6mm; margin-right: 1.6mm; vertical-align: .1mm; }
+  .phones { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; align-items: start; }
+  .stack { display: grid; grid-template-columns: 1fr; gap: 3mm; }
+</style>
+</head>
+<body>
+
+<!-- 1. COVER -->
+<section class="page cover">
+  <div class="top">
+    <div class="brand"><i></i><i></i>HARU</div>
+    <h1>세상을 읽고,<br>음악과 그림을 만드는<br><span>나만의 아틀리에 펫</span></h1>
+    <p class="lead">HARU는 매일 뉴스·트렌드·사람들의 관심사를 읽고, 그날 느낀 세상을 <b>음악(MP3)</b>과 <b>그림(PNG)</b>으로 만드는 작은 아이를 곁에서 지켜보는 앱이에요. 작업 과정은 <b>타임랩스 영상(MP4)</b>으로, 그날의 마음은 <b>일기</b>로 남아요.</p>
+    <div class="chips"><span>관찰형 육성</span><span>3D 방 · 캐릭터</span><span>실제 녹음 악기</span><span>스스로 고르는 음악 취향</span><span>Windows · Android · iOS</span></div>
+  </div>
+  <figure class="hero"><img class="shot" src="../screenshots/work-compose.jpg" alt="작곡 중인 모모"></figure>
+  <div class="meta"><span>SERVICE OVERVIEW · v1.0.0</span><span>2026-11 · github.com/StarlightSSM/haru</span></div>
+</section>
+
+<!-- 2. AT A GLANCE -->
+<section class="page">
+  <p class="kicker">01 · At a glance</p>
+  <h1>한눈에 보는 HARU</h1>
+  <p class="lead">“그 아이가 매일 세상에 대해 느끼는 걸 나도 느껴보고 싶다.” 이 마음에서 시작한 서비스예요. 사용자는 무언가를 열심히 조작하기보다, 그 아이가 하루를 보내는 모습을 <b>관찰</b>하고, 가끔 <b>끼어들어</b> 함께 작품을 만들어요.</p>
+
+  <div class="grid3" style="margin-top:5mm">
+    <div class="card soft"><h3><span class="dot"></span>세상을 대신 느껴주는 아이</h3><p class="small">구글 뉴스·BBC·구글 트렌드·위키백과·Hacker News·날씨를 읽고 키워드와 “세상의 기분”을 정리해요. 그 기분이 곡의 장르·조성·템포와 그림의 색이 돼요.</p></div>
+    <div class="card soft"><h3><span class="dot"></span>외롭지 않게, 곁에 있는 존재</h3><p class="small">3D 방에서 책 읽고, 작곡하고, 그림 그리는 모습을 언제든 볼 수 있어요. 창을 내리면 바탕화면 위를 걸어 다니는 작은 아바타가 돼요.</p></div>
+    <div class="card soft"><h3><span class="dot"></span>함께 만드는 작품</h3><p class="small">작업 중에 음을 던지고, 리듬을 바꾸고, 물감을 쏟을 수 있어요. 그 아이는 놀라지만 결국 그게 작품의 일부가 되고, 일기에 “고마워”라고 적어요.</p></div>
+  </div>
+
+  <h2>하루의 흐름</h2>
+  <p class="small muted">정해 둔 시각이 되거나 「▶ 오늘 작품 시작」을 누르면 시작돼요. 작업 시간은 3분 ~ 2시간 중에 고를 수 있어요.</p>
+  <div class="flow">
+    <div class="step"><span class="n">STEP 1</span><b>세상 읽기</b><small>뉴스·트렌드·날씨 수집, 키워드 별자리</small></div>
+    <div class="step"><span class="n">STEP 2</span><b>생각하기</b><small>기분 분석 → 음악 스타일·장르 고르기</small></div>
+    <div class="step"><span class="n">STEP 3</span><b>작곡</b><small>키워드 글자로 모티프 → 코드·베이스·드럼·멜로디</small></div>
+    <div class="step"><span class="n">STEP 4</span><b>그림</b><small>6가지 화풍 중 하나로 한 획씩</small></div>
+    <div class="step"><span class="n">STEP 5</span><b>완성</b><small>녹음·저장·일기, 별(★) 보상</small></div>
+  </div>
+  <div class="outputs">
+    <div><code>music.mp3</code><small>그날의 곡 (약 75초, 설정 가능)</small></div>
+    <div><code>art.png</code><small>포스터 + 정사각 원화</small></div>
+    <div><code>process.mp4</code><small>작업 과정 타임랩스 + 완성곡</small></div>
+    <div><code>diary.md</code><small>그 아이의 일기 · 읽은 소식</small></div>
+  </div>
+  <p class="small muted" style="margin-top:2mm">저장 위치: <span class="mono">문서\HARU\날짜_시각_제목\</span> (휴대폰은 앱 문서 폴더 + 공유 버튼)</p>
+
+  <h2>누구를 위한 서비스인가요?</h2>
+  <div class="grid2">
+    <div class="card"><h3>뉴스를 직접 읽기 지친 사람</h3><p class="small">하루 소식을 숫자와 헤드라인 대신 한 곡의 음악과 한 장의 그림으로 받아봐요.</p></div>
+    <div class="card"><h3>작업할 때 곁에 누군가 있었으면 하는 사람</h3><p class="small">공부·작업 시간에 맞춰 함께 집중하고(뽀모도로), 같이 쉬는 작은 동료가 생겨요.</p></div>
+    <div class="card"><h3>음악·미술을 가볍게 만져보고 싶은 사람</h3><p class="small">세계 28개 장르의 리듬을 스텝 그리드로 만져보고, 그 아이에게 가르칠 수 있어요.</p></div>
+    <div class="card"><h3>매일의 기록을 남기고 싶은 사람</h3><p class="small">작품·일기·키워드가 날짜별로 쌓여 “그날의 세상”을 되돌아볼 수 있어요.</p></div>
+  </div>
+  <div class="folio"><span>HARU · SERVICE OVERVIEW</span><span>02</span></div>
+</section>
+
+<!-- 3. OBSERVE -->
+<section class="page">
+  <p class="kicker">02 · Observe</p>
+  <h1>관찰하기 — 3D 방과 그 아이</h1>
+  <p>방은 three.js로 그린 3D 공간이에요. 창밖 하늘은 실제 시간을 따라 낮 → 노을 → 밤으로 바뀌고, 해가 지면 스탠드 불빛이 켜져요. 기본 캐릭터는 퍼블릭 도메인(CC0) 3D 모델 「시부」이고, VRoid Studio에서 만든 내 캐릭터(.vrm)로 바꿀 수 있어요.</p>
+  <figure><img class="shot" src="../screenshots/room-day.jpg" alt="낮의 방"><figcaption>낮의 방. 왼쪽 위는 기분·에너지·유대감·영감, 오른쪽 위는 오늘 작업 시계, 아래는 함께 놀기 도구 막대.</figcaption></figure>
+  <div class="grid3" style="margin-top:4mm">
+    <figure><img class="shot" src="../screenshots/cam-close.jpg" alt="가까이"><figcaption>「가까이」 카메라</figcaption></figure>
+    <figure><img class="shot" src="../screenshots/room-sunset.jpg" alt="노을"><figcaption>해 질 녘</figcaption></figure>
+    <figure><img class="shot" src="../screenshots/room-night.jpg" alt="밤"><figcaption>밤 — 도시 불빛</figcaption></figure>
+  </div>
+  <div class="grid2" style="margin-top:5mm">
+    <div class="card soft"><h3>8가지 관찰 시점</h3><p class="small">자동 연출 · 전체 · 책상 · 가까이 · 어깨 너머 · 이젤 · 창밖 · 책 읽는 곳. 자동 연출은 그 아이가 자리를 옮기거나 작업 단계가 바뀌면 바로 장면을 바꿔요. 화면을 끌면 돌려 보고, 휠·두 손가락으로 확대해요.</p></div>
+    <div class="card soft"><h3>살아 있는 상태</h3><p class="small">기분·에너지·유대감·영감이 시간과 상호작용에 따라 변해요. 쓰다듬기·간식·커피로 돌봐줄 수 있고, 작품을 만들면 별(★)과 레벨이 쌓이고, 별로 방 소품 12종을 들일 수 있어요.</p></div>
+  </div>
+  <div class="folio"><span>HARU · SERVICE OVERVIEW</span><span>03</span></div>
+</section>
+
+<!-- 4. A DAY OF WORK -->
+<section class="page">
+  <p class="kicker">03 · A day of work</p>
+  <h1>하루 작업 — 세상에서 작품까지</h1>
+  <div class="grid2">
+    <figure><img class="shot" src="../screenshots/work-gather.jpg" alt="세상 읽기"><figcaption>① 빈백에 앉아 태블릿으로 오늘의 소식을 읽는 중</figcaption></figure>
+    <figure><img class="shot" src="../screenshots/world.jpg" alt="세상 탭"><figcaption>세상(WORLD) 탭 — 키워드 별자리, 세상의 기분, 수집처 (헤드라인은 가림)</figcaption></figure>
+  </div>
+  <p style="margin-top:4mm">수집한 기사에서 키워드를 뽑고, 함께 나온 단어끼리 이어 <b>키워드 별자리</b>를 그려요. 기사 분위기로 밝음·들뜸·긴장·따뜻함·새로움을 계산해 <b>세상의 기분</b>을 정하고, 여기에 나라 이름(예: 브라질 → 보사노바)과 그 아이의 취향을 더해 곡의 방향을 골라요.</p>
+  <div class="grid2" style="margin-top:3mm">
+    <figure><img class="shot" src="../screenshots/work-compose.jpg" alt="작곡"><figcaption>② 책상에서 실시간으로 연주하며 작곡</figcaption></figure>
+    <figure><img class="shot" src="../screenshots/studio-note.jpg" alt="작업실"><figcaption>작업실(STUDIO) — 악보, 파형, 스펙트럼, 곡 정보</figcaption></figure>
+  </div>
+  <p style="margin-top:4mm">멜로디의 첫 동기는 <b>오늘의 키워드 글자</b>로 만들어요(예: ‘재건축’ → D5 B4 E5 D5). 코드 → 베이스 → 드럼 → 멜로디 순으로 써 내려가는 과정이 악보에 실시간으로 그려지고, 다 쓰면 그림으로 넘어가요. 그림은 궤도·흐름·색면·수묵·바우하우스·점묘 6가지 화풍 중 하나예요.</p>
+  <div class="folio"><span>HARU · SERVICE OVERVIEW</span><span>04</span></div>
+</section>
+
+<!-- 5. TOGETHER -->
+<section class="page">
+  <p class="kicker">04 · Together</p>
+  <h1>함께하기 — 장난도 작품이 돼요</h1>
+  <p>작업 중인 그 아이에게 끼어들 수 있어요. 집중하고 있을 땐 싫어하기도 하지만, 그 흔적은 곡과 그림에 그대로 남아요.</p>
+  <table style="margin:2mm 0 4mm">
+    <tr><th style="width:24%">도구</th><th>무슨 일이 생기나요</th></tr>
+    <tr><td>음 던지기</td><td>누른 음이 지금 쓰는 곡의 멜로디에 들어가요 (악보에 표시돼요).</td></tr>
+    <tr><td>리듬 바꾸기</td><td>리듬 랩에서 만든 리듬을 지금 곡에 끼워 넣어요 (예: 재즈 → 삼바).</td></tr>
+    <tr><td>물감 쏟기</td><td>그림 위에 물감이 튀고, 그 색이 완성작에 남아요.</td></tr>
+    <tr><td>속삭이기</td><td>단어 하나를 들려주면 오늘(그리고 다음) 작품의 키워드에 섞여요.</td></tr>
+    <tr><td>쓰다듬기 · 간식 · 커피</td><td>기분·에너지·유대감이 올라요. 음악이 나올 때 쓰다듬으면 그 소리를 더 좋아하게 돼요.</td></tr>
+  </table>
+  <div class="grid2">
+    <figure><img class="shot" src="../screenshots/prank-splash.jpg" alt="물감 쏟기"><figcaption>“앗! 물감이…! …근데 이 색 예쁘다.”</figcaption></figure>
+    <figure><img class="shot" src="../screenshots/done.jpg" alt="완성"><figcaption>⑤ 완성 — 포스터, 작품 점수, 별(★) 보상</figcaption></figure>
+  </div>
+  <h2>기록 — 쌓여 가는 나날</h2>
+  <figure><img class="shot" src="../screenshots/archive.jpg" alt="기록" style="width:80%"><figcaption>기록(ARCHIVE) — 포스터·타임랩스·음악·일기·함께한 흔적</figcaption></figure>
+  <div class="quote">“그리고 네가 던진 음 1개, 네가 쏟은 물감 1번… 처음엔 깜짝 놀랐는데, 결국 그게 작품의 일부가 됐어. 고마워.” — 모모의 일기 중에서</div>
+  <div class="folio"><span>HARU · SERVICE OVERVIEW</span><span>05</span></div>
+</section>
+
+<!-- 6. MUSIC & TASTE -->
+<section class="page">
+  <p class="kicker">05 · Music &amp; taste</p>
+  <h1>음악 — 실제 악기 소리, 스스로 고르는 취향</h1>
+  <p>곡은 <b>실제로 녹음된 악기 소리</b>(그랜드 피아노, 현악 앙상블, 하프, 플루트, 색소폰, 비브라폰, 콘트라베이스, 기타, 콩가·봉고 등 19종 + 드럼 22종)로 연주돼요. 악기마다 좌우 자리와 잔향을 따로 주고, 테이프 질감은 로파이 스타일에만 걸어 부드럽고 깔끔하게 들려요.</p>
+  <p>그 아이는 작업할 때마다 <b>자기 취향 × 오늘 기분 × 새로움</b>으로 아래 10가지 스타일 중 하나를 스스로 고르고, 왜 골랐는지 말해줘요 — “오늘 기분이 들뜬 편이라서… 청량 퓨전 OST 쪽이 끌려.”</p>
+  <table class="styles" style="margin:2mm 0 3mm">
+    <tr><th>스타일</th><th>느낌</th><th>주요 악기</th></tr>
+    <tr><td><span class="swatch" style="background:#4aa8ff"></span>청량 퓨전 OST</td><td>맑은 하늘색 게임 OST, 빠르고 반짝임</td><td>피아노 아르페지오 · 글로켄 · 일렉 베이스</td></tr>
+    <tr><td><span class="swatch" style="background:#c79a6b"></span>로파이 피아니스트</td><td>따뜻하고 느긋한 빈티지</td><td>피아노 · 일렉 피아노 · 콘트라베이스</td></tr>
+    <tr><td><span class="swatch" style="background:#8c6bd6"></span>시네마틱 스트링</td><td>영화 엔딩처럼 넓고 웅장함</td><td>현악 · 호른 · 하프</td></tr>
+    <tr><td><span class="swatch" style="background:#e0a35a"></span>카페 보사</td><td>오후 세 시의 카페</td><td>나일론 기타 · 플루트 · 비브라폰</td></tr>
+    <tr><td><span class="swatch" style="background:#5a6b8c"></span>재즈 트리오</td><td>작은 클럽의 스윙</td><td>피아노 · 콘트라베이스 · 테너 색소폰</td></tr>
+    <tr><td><span class="swatch" style="background:#7fae5c"></span>어쿠스틱 포크</td><td>들판을 걷는 소박함</td><td>어쿠스틱 기타 · 클라리넷 · 피치카토</td></tr>
+    <tr><td><span class="swatch" style="background:#8fc0c9"></span>앰비언트 피아노</td><td>여백과 잔향</td><td>피아노 · 먼 현악 · 하프</td></tr>
+    <tr><td><span class="swatch" style="background:#ff7aa8"></span>시티팝 나이트</td><td>네온 번지는 밤 드라이브</td><td>일렉 피아노 · 색소폰 · 클린 기타</td></tr>
+    <tr><td><span class="swatch" style="background:#e46a3c"></span>월드 퍼커션</td><td>진짜 손북들의 리듬</td><td>콩가 · 다르부카 · 아고고 · 마림바</td></tr>
+    <tr><td><span class="swatch" style="background:#6fd36f"></span>레트로 칩튠</td><td>일부러 전자음, 8비트 추억</td><td>네모파 · 삼각파 베이스</td></tr>
+  </table>
+  <div class="grid2">
+    <figure><img class="shot" src="../screenshots/taste.jpg" alt="취향 탭"><figcaption>취향(TASTE) — 좋아하는 정도, ▶ 같이 듣기, 다음 곡에 추천</figcaption></figure>
+    <div>
+      <p class="small"><b>취향은 변해요.</b> 잘 만든 곡의 스타일, 8초 넘게 같이 들어준 스타일, 음악이 나올 때 쓰다듬어 준 스타일을 점점 더 좋아하게 돼요.</p>
+      <p class="small"><b>리듬 랩</b>에서는 보사노바·삼바·아프로비트·국악 굿거리장단 등 세계 28개 장르의 리듬을 직접 만져 보고 가르칠 수 있어요.</p>
+      <p class="small muted">스타일은 특정 작곡가의 곡을 베낀 것이 아니라 악기 편성·믹스·습관을 묘사한 오리지널 설정이에요.</p>
+    </div>
+  </div>
+  <div class="folio"><span>HARU · SERVICE OVERVIEW</span><span>06</span></div>
+</section>
+
+<!-- 7. PLATFORMS -->
+<section class="page">
+  <p class="kicker">06 · Everywhere</p>
+  <h1>어디서나 — PC, 휴대폰, 태블릿</h1>
+  <div class="grid2" style="grid-template-columns: 1.6fr 1fr; align-items:center">
+    <div>
+      <h3>Windows — 바탕화면 미니 아바타</h3>
+      <p class="small">창의 「–」를 누르면 그 아이가 투명한 작은 3D 아바타가 되어 바탕화면 위를 떠다니거나 작업표시줄 위를 걸어요. 말풍선으로 상태를 알려주고, 클릭하면 쓰다듬기, 더블클릭하면 원래 창으로 돌아와요. 작업이 끝나면 Windows 알림도 보내요.</p>
+    </div>
+    <div style="text-align:center; background:var(--paper); border-radius:2.4mm; padding:3mm"><img src="../screenshots/mini-avatar.png" alt="미니 아바타" style="height:52mm"></div>
+  </div>
+  <h2>휴대폰 · 태블릿</h2>
+  <p class="small">같은 앱이 안드로이드 휴대폰·갤럭시 탭에서 돌아가요(아이폰·아이패드는 Mac에서 설치). 상태 표시줄·내비게이션 바를 피해서 그리고, 메뉴와 도구 막대는 옆으로 밀어서 넘겨요.</p>
+  <div class="phones" style="grid-template-columns: 1fr 1fr 1.9fr">
+    <figure><img class="shot" src="../screenshots/phone-room.jpg" alt="휴대폰 방"><figcaption>휴대폰 — 방</figcaption></figure>
+    <figure><img class="shot" src="../screenshots/phone-taste.jpg" alt="휴대폰 취향"><figcaption>휴대폰 — 취향</figcaption></figure>
+    <div class="stack">
+      <figure><img class="shot" src="../screenshots/tablet-room.jpg" alt="태블릿 방"><figcaption>태블릿(가로) — 방</figcaption></figure>
+      <figure><img class="shot" src="../screenshots/tablet-taste.jpg" alt="태블릿 취향"><figcaption>태블릿(가로) — 취향</figcaption></figure>
+    </div>
+  </div>
+  <table style="margin-top:3mm">
+    <tr><th>기기</th><th>설치 파일</th><th>요구 사항</th></tr>
+    <tr><td>Windows PC</td><td class="mono">HARU Setup 1.0.0.exe (약 128MB)</td><td>Windows 10/11 64비트</td></tr>
+    <tr><td>안드로이드 휴대폰 · 갤럭시 탭</td><td class="mono">HARU-1.0.0-android.apk (약 39MB)</td><td>Android 7.0 이상</td></tr>
+    <tr><td>아이폰 · 아이패드</td><td>Mac + Xcode로 직접 설치</td><td>iOS/iPadOS 15 이상</td></tr>
+  </table>
+  <div class="folio"><span>HARU · SERVICE OVERVIEW</span><span>07</span></div>
+</section>
+
+<!-- 8. UNDER THE HOOD -->
+<section class="page">
+  <p class="kicker">07 · Under the hood</p>
+  <h1>만든 방식과 약속</h1>
+  <div class="grid2">
+    <div class="card"><h3>AI 없이도 돌아가요</h3><p class="small">작곡·그림·일기는 기본적으로 앱 안의 규칙(절차적 생성)으로 만들어요. 실행할 때마다 AI를 부르지 않아요. 원하면 설정에서 내 Claude API 키를 넣어 <b>일기만</b> AI가 쓰게 할 수 있어요(선택, Windows 전용). 키는 OS 암호화 저장소에 보관돼요.</p></div>
+    <div class="card"><h3>내 기기에만 저장돼요</h3><p class="small">작품·상태·설정은 모두 내 기기의 폴더에 저장돼요. 서버나 계정이 없어요. 바깥으로 나가는 요청은 공개 뉴스·트렌드 피드와 날씨(Open-Meteo)를 읽는 것뿐이에요. 인터넷이 없으면 오프라인 모드로 작업해요.</p></div>
+  </div>
+  <h2>기술 구성</h2>
+  <table>
+    <tr><th style="width:26%">영역</th><th>사용 기술</th></tr>
+    <tr><td>데스크톱 앱</td><td>Electron 38 — 메인 창, 투명 미니 아바타 창, 트레이, 자동 실행</td></tr>
+    <tr><td>모바일 앱</td><td>Capacitor 8 — 같은 웹 코드로 Android/iOS 빌드, 파일 저장·공유·알림 플러그인</td></tr>
+    <tr><td>3D</td><td>three.js + @pixiv/three-vrm — 툰 셰이딩 방, VRM 캐릭터, 시간대별 하늘</td></tr>
+    <tr><td>소리</td><td>Web Audio 샘플러(녹음 악기) + 합성 악기, 오프라인 렌더링 → lamejs로 MP3</td></tr>
+    <tr><td>영상</td><td>WebCodecs(H.264/AAC) + mp4-muxer로 타임랩스 MP4</td></tr>
+    <tr><td>세상 읽기</td><td>RSS·트렌드 피드 수집 → 키워드 추출, 동시출현 네트워크, 기분 점수</td></tr>
+  </table>
+  <h2>함께 쓴 공개 자원</h2>
+  <table>
+    <tr><th style="width:34%">자원</th><th>용도</th><th style="width:20%">라이선스</th></tr>
+    <tr><td>VRoid 샘플 모델 「시부」·「비비」</td><td>기본 3D 캐릭터</td><td>CC0 1.0</td></tr>
+    <tr><td>VCSL · VSCO 2 Community Edition</td><td>피아노·현악·관악·타악기 녹음</td><td>CC0 1.0</td></tr>
+    <tr><td>tonejs-instruments (N. Brosowsky)</td><td>베이스·기타 녹음</td><td>CC BY 3.0</td></tr>
+    <tr><td>three.js · three-vrm · mp4-muxer</td><td>3D · VRM · MP4</td><td>MIT</td></tr>
+    <tr><td>lamejs</td><td>MP3 인코딩</td><td>LGPL-3.0</td></tr>
+  </table>
+  <p class="small muted" style="margin-top:3mm">전체 목록과 확인 내역은 저장소의 README「차용한 외부 자원의 라이선스」와 <span class="mono">src/assets/samples/CREDITS.md</span>에 있어요. HARU 코드 라이선스: Apache-2.0.</p>
+  <div class="card soft" style="margin-top:5mm">
+    <h3>시작하기</h3>
+    <p class="small" style="margin:0">설치 방법·화면별 사용법은 README를 보세요 → <span class="mono">github.com/StarlightSSM/haru</span><br>개발자는 <span class="mono">npm install</span> 후 <span class="mono">npm start</span>(PC), <span class="mono">npm run android</span>(APK)로 실행·빌드해요.</p>
+  </div>
+  <div class="folio"><span>HARU · SERVICE OVERVIEW</span><span>08</span></div>
+</section>
+
+</body>
+</html>

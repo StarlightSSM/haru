@@ -6,6 +6,7 @@
 ![작곡 중인 모모](docs/screenshots/work-compose.jpg)
 
 → 상황별 화면은 [화면으로 보는 사용법](#화면으로-보는-사용법)에 있어요.
+→ 서비스 소개서(PDF, 8쪽): [docs/HARU-service-overview.pdf](docs/HARU-service-overview.pdf)
 
 ## 다운로드 · 설치
 
@@ -280,6 +281,7 @@ npm run android      # 안드로이드 APK → android/app/build/outputs/apk/deb
 모바일 코드는 `src/` 를 그대로 쓰고, `tools/build-web.js` 가 `www/` 를 만들면서 `src/js/platform-mobile.js` (Capacitor 연결층)를 끼워 넣어요.
 VS Code 터미널에서는 `ELECTRON_RUN_AS_NODE`가 설정돼 있을 수 있으니 먼저 `Remove-Item Env:ELECTRON_RUN_AS_NODE`.
 `tools/test-main.js`: 작곡·렌더·MP3·MP4 성능 측정용 하네스.
+서비스 소개서 PDF는 `docs/brochure/brochure.html` 을 고친 뒤 `npx electron tools/make-brochure.js` 로 다시 만들어요 (→ `docs/HARU-service-overview.pdf`).
 
 ## 차용한 외부 자원의 라이선스
 

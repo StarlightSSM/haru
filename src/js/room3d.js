@@ -197,10 +197,23 @@
       add(s, box(2.7, 0.07, 0.36), fm, { pos: [(wx0 + wx1) / 2, wy0 - 0.03, -2.2], outline: 0.004, receive: true });
       add(s, box(0.07, wy1 - wy0, 0.24), fm, { pos: [wx0 - 0.03, (wy0 + wy1) / 2, -2.3], outline: 0.004 });
       add(s, box(0.07, wy1 - wy0, 0.24), fm, { pos: [wx1 + 0.03, (wy0 + wy1) / 2, -2.3], outline: 0.004 });
-      add(s, box(0.05, wy1 - wy0, 0.06), fm, { pos: [(wx0 + wx1) / 2, (wy0 + wy1) / 2, -2.3], outline: 0.003 });
-      add(s, box(wx1 - wx0, 0.05, 0.06), fm, { pos: [(wx0 + wx1) / 2, 1.85, -2.3], outline: 0.003 });
-      const glass = new T.Mesh(new T.PlaneGeometry(wx1 - wx0, wy1 - wy0), new T.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.04, depthWrite: false }));
-      glass.position.set((wx0 + wx1) / 2, (wy0 + wy1) / 2, -2.31); s.add(hit(glass, 'window'));
+      /* two casement sashes hinged on the outer posts; they swing into the room when the window is opened */
+      const sashW = (wx1 - wx0) / 2, sashH = wy1 - wy0;
+      const glassMat = new T.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.04, depthWrite: false, side: T.DoubleSide });
+      this.sashes = [-1, 1].map((side) => {
+        const hinge = new T.Group();
+        hinge.position.set(side < 0 ? wx0 : wx1, (wy0 + wy1) / 2, -2.27); s.add(hinge);
+        const dir = side < 0 ? 1 : -1; /* sash extends from the hinge toward the window centre */
+        const sg = new T.Group(); sg.position.x = dir * sashW / 2; hinge.add(sg);
+        add(sg, box(0.045, sashH, 0.05), fm, { pos: [dir * (sashW / 2 - 0.022), 0, 0], outline: 0.003 });
+        add(sg, box(0.04, sashH, 0.05), fm, { pos: [-dir * (sashW / 2 - 0.02), 0, 0], outline: 0.002 });
+        add(sg, box(sashW, 0.045, 0.05), fm, { pos: [0, sashH / 2 - 0.022, 0], outline: 0.002 });
+        add(sg, box(sashW, 0.045, 0.05), fm, { pos: [0, -sashH / 2 + 0.022, 0], outline: 0.002 });
+        add(sg, box(sashW, 0.04, 0.05), fm, { pos: [0, 1.85 - (wy0 + wy1) / 2, 0], outline: 0.002 });
+        const gl = new T.Mesh(new T.PlaneGeometry(sashW - 0.06, sashH - 0.06), glassMat); sg.add(hit(gl, 'window'));
+        return { hinge, side, open: 0 };
+      });
+      this.windowOpen = false;
       /* curtains */
       const curtain = (x, flip) => {
         const g = new T.PlaneGeometry(0.55, 2.0, 24, 1);
@@ -248,6 +261,10 @@
       this.steam = this.makeSteam(); this.steam.position.set(-0.35, 0.9, -0.65); s.add(this.steam);
       /* papers */
       add(desk, box(0.2, 0.004, 0.28), toon('#fbfaf6'), { pos: [-0.38, 0.772, 0.12], rot: [0, 0.2, 0], outline: 0 });
+      /* split the desk into a frame (stretched to the right height) and a top (moved, never squashed) */
+      this.deskTop = new T.Group(); this.deskBase = new T.Group();
+      [...desk.children].forEach((o) => (o.position.y >= 0.7 ? this.deskTop : this.deskBase).add(o));
+      desk.add(this.deskBase); desk.add(this.deskTop);
       /* chair */
       const ch = new T.Group(); ch.position.set(0, 0, -1.1); s.add(ch); this.chair = ch;
       add(ch, cyl(0.22, 0.22, 0.06, 24), toon('#7d86b0'), { pos: [0, 0.45, 0], outline: 0.004 });
@@ -259,7 +276,8 @@
       /* wall: clock, frames, shelves */
       this.clock = this.makeClock(); this.clock.position.set(0.55, 2.5, -2.19); s.add(this.clock);
       this.frames = [];
-      [[0.25, 1.7, 0.52], [0.9, 1.78, 0.4], [0.32, 1.12, 0.34], [0.92, 1.2, 0.46]].forEach(([x, y, sz]) => {
+      /* frames sit between the curtain (right edge x≈0.35) and the bookshelf (x≥1.4) */
+      [[0.74, 1.68, 0.46], [1.22, 1.76, 0.36], [0.72, 1.12, 0.32], [1.2, 1.2, 0.4]].forEach(([x, y, sz]) => {
         const g = new T.Group(); g.position.set(x, y, -2.18); s.add(g);
         add(g, box(sz + 0.06, sz + 0.06, 0.03), toon('#3b3644'), { outline: 0 });
         const pic = new T.Mesh(new T.PlaneGeometry(sz, sz), new T.MeshBasicMaterial({ color: '#f6f3ec' }));
@@ -292,6 +310,7 @@
 
       /* reading nook: beanbag + cushion + blanket */
       const nk = new T.Group(); nk.position.set(-2.0, 0, -0.05); s.add(nk); this.nook = nk;
+      this.fit = { seatHip: 0.5, lowHip: 0.36 };
       /* beanbag: one soft blob with a raised back */
       const bb = sph(0.55, 36, 24); const bp = bb.attributes.position;
       for (let i = 0; i < bp.count; i++) { const y = bp.getY(i), z = bp.getZ(i); let ny = y * 0.55; if (z < 0) ny += (-z / 0.55) * 0.28 * Math.max(0, (y + 0.3) / 0.85); bp.setY(i, Math.max(ny, -0.2)); }
@@ -359,7 +378,7 @@
         g.children[0].position.y = 0.11;
         this.fish = add(g, sph(0.025, 10, 8), toon('#ff8a3d'), { pos: [0, 0.1, 0], scale: [1.4, 0.8, 0.6], outline: 0.002 }); }
       /* globe on the desk */
-      { const g = grp('globe'); g.position.set(0.85, 0.77, -0.75);
+      { const g = grp('globe'); g.position.set(0.85, 0.77, -0.75); this.globeG = g;
         add(g, cyl(0.05, 0.06, 0.02), toon('#8a6040'), { outline: 0.002 });
         add(g, cyl(0.006, 0.006, 0.1), toon('#8a6040'), { pos: [0, 0.05, 0], outline: 0 });
         this.globe = add(g, sph(0.075, 20, 14), toon('#7ab6e8'), { pos: [0, 0.14, 0], outline: 0.003 });
@@ -402,11 +421,29 @@
       if (this.char) { this.scene.remove(this.char.root); this.char.dispose(); }
       this.char = new H.Character3D(cfg);
       this.scene.add(this.char.root);
+      this.fitFurniture();
     }
     useCharacter(c) {
       if (this.char) { this.scene.remove(this.char.root); this.char.dispose(); }
       this.char = c; this.scene.add(c.root);
+      this.fitFurniture();
       return c;
+    }
+    /* chair, desk and beanbag follow the character's body size (seat ≈ 27 %, desk ≈ 45 % of height) */
+    fitFurniture() {
+      if (!this.char || !this.deskTop) return;
+      const b = new T.Box3().setFromObject(this.char.root);
+      const Hc = H.clamp(b.max.y - b.min.y, 0.9, 2.0);
+      const seat = H.clamp(Hc * 0.27, 0.3, 0.5), desk = H.clamp(Hc * 0.455, 0.52, 0.8);
+      this.deskBase.scale.y = desk / 0.77;
+      this.deskTop.position.y = desk - 0.77;
+      if (this.globeG) this.globeG.position.y = desk;
+      if (this.steam) this.steam.position.y = desk + 0.13;
+      const cs = H.clamp(Hc / 1.45, 0.75, 1.2);
+      this.chair.scale.set(cs, seat / 0.48, cs);
+      const ns = H.clamp(Hc / 1.35, 0.8, 1.25);
+      this.nook.scale.setScalar(ns);
+      this.fit = { height: Hc, seat, desk, seatHip: seat + 0.03, lowHip: 0.36 * ns };
     }
 
     /* ---------------- cameras ---------------- */
@@ -421,6 +458,19 @@
       c.p.copy(c.t).add(new T.Vector3().setFromSpherical(sp));
       this.clampCam(c.p);
       this.cam.p.copy(c.p);
+    }
+    /* move the observer (camera and what it looks at together) — like walking sideways / standing up */
+    pan(dx, dy) {
+      const c = this.camTarget;
+      const off = c.t.clone().sub(c.p);
+      const fwd = off.clone().setY(0); if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1); fwd.normalize();
+      const right = new T.Vector3().crossVectors(fwd, new T.Vector3(0, 1, 0)).normalize();
+      const k = H.clamp(off.length(), 0.6, 6) * 0.0018;
+      const want = c.p.clone().addScaledVector(right, -dx * k).add(new T.Vector3(0, dy * k, 0));
+      this.clampCam(want);
+      const delta = want.sub(c.p);
+      c.p.add(delta); c.t.add(delta);
+      this.cam.p.add(delta); this.cam.t.add(delta);
     }
     zoom(f) {
       const c = this.camTarget;
@@ -439,13 +489,13 @@
     /* ---------------- per-frame ---------------- */
     petPlacement(pet) {
       const X = toX(pet.x), Z = toZ(pet.y);
-      let heading = 0, seatH = 0.5, low = false;
+      let heading = 0, seatH = this.fit ? this.fit.seatHip : 0.5, low = false;
       const spot = pet.target ? null : pet.spot;
       if (pet.target) {
         const tx = toX(pet.target.x) - X, tz = toZ(pet.target.y) - Z;
         heading = Math.abs(tx) + Math.abs(tz) > 0.001 ? Math.atan2(tx, tz) : this.lastHeading || 0;
       } else if (spot === 'desk') heading = 0;
-      else if (spot === 'nook') { heading = 0.35; seatH = 0.36; low = true; }
+      else if (spot === 'nook') { heading = 0.35; seatH = this.fit ? this.fit.lowHip : 0.36; low = true; }
       else if (spot === 'window') heading = Math.PI - 0.35;
       else if (spot === 'easel') heading = 2.2;
       else if (spot === 'center') heading = 0.15;
@@ -453,8 +503,23 @@
       return { X, Z, heading, seatH, low };
     }
 
+    setWindowOpen(open) { this.windowOpen = !!open; }
     update(dt, pet) {
       this.t += dt;
+      if (this.sashes) {
+        const want = this.windowOpen ? 1 : 0;
+        this.sashes.forEach((sh) => {
+          sh.open += (want - sh.open) * Math.min(1, dt * 3.2);
+          const gust = this.windowOpen ? Math.sin(this.t * 0.9 + sh.side) * 0.04 : 0;
+          sh.hinge.rotation.y = sh.side * (sh.open * 1.15 + gust);
+        });
+        const breeze = this.sashes[0].open;
+        (this.curtains || []).forEach((c, i) => {
+          const sway = breeze * (Math.sin(this.t * 1.7 + i * 1.3) * 0.5 + Math.sin(this.t * 0.6 + i) * 0.5);
+          c.rotation.x = -0.12 * breeze - sway * 0.08;
+          c.position.z = -2.12 + breeze * 0.08 + sway * 0.03;
+        });
+      }
       const h = this.hours, day = H.daylight(h);
       /* sky colours (shared with the 2D room) */
       const [top, bot] = H.skyColors(h);

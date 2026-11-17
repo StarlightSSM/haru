@@ -47,7 +47,8 @@
     lines.push(`그래서 ${g.region}에서 온 ${H.josa(g.ko, '으로/로')} 곡을 만들었어. ${song.keyName} ${song.scaleKo}, ${song.bpm} BPM. 제목은 「${song.title}」.`);
     if (song.styleKo) lines.push(`소리는 내 취향대로 ‘${song.styleKo}’ 느낌으로 골랐어 — ${H.songInstKo(song)}.`);
     if (song.motifs[0]) lines.push(`첫 멜로디는 '${song.motifs[0].word}'${J(song.motifs[0].word, '이라는/라는')} 단어의 글자들로 만들었어 (${song.motifs[0].names.slice(0, 4).join(' ')}).`);
-    lines.push(r.pick([
+    if (art.first) lines.push(`그림은 처음 시도해 본 ${art.styleKo}! 아직 서툴지만, 하면 할수록 손에 익을 거야.`);
+    else lines.push(r.pick([
       `그림은 ${art.styleKo} 스타일. 사람들이 같은 걸 이야기할 때 점들이 모이는 게 보였거든.`,
       `그림은 ${H.josa(art.styleKo, '으로/로')} 그렸어. 오늘의 색은 소리를 들으면서 골랐어.`,
       `${art.styleKo} 그림을 그렸어. 붓질 하나하나가 오늘의 소식 하나하나야.`,
@@ -58,6 +59,8 @@
     if (log.splash) you.push(`네가 쏟은 물감 ${log.splash}번`);
     if (log.whispers && log.whispers.length) you.push(`네가 속삭인 '${log.whispers.join("', '")}'`);
     if (you.length) lines.push(`그리고 ${you.join(', ')}… 처음엔 깜짝 놀랐는데, 결국 그게 작품의 일부가 됐어. 고마워.`);
+    if (log.colors && log.colors.length) lines.push(`네가 쏟은 ${[...new Set(log.colors.map(H.colorName))].join('·')} 물감은 버리지 않고, 그 색에서부터 그림을 이어서 그렸어.`);
+    if (log.rejected) lines.push(`던져준 음 중 ${log.rejected}개는 곡이랑 안 어울려서 빼뒀어. 서운해하지 마!`);
     if (log.pats) lines.push(r.pick(['중간에 쓰다듬어줘서 힘이 났어.', '머리 쓰다듬어 준 거, 사실 좋았어.']));
     if (log.snacks) lines.push('간식도 맛있었어!');
     lines.push(r.pick([

@@ -372,7 +372,22 @@ async function runShots() {
   const cap = async (name) => { const img = await mainWin.webContents.capturePage(); fs.writeFileSync(path.join(dir, name + '.png'), img.toPNG()); };
   const plan = process.env.HARU_SHOT_PLAN || 'basic';
   await wait(5000);
-  if (plan === 'readme') {
+  if (plan === 'script') {
+    /* dev: run HARU_SCRIPT (an async function body) inside the app, print what it returns */
+    const body = fs.readFileSync(process.env.HARU_SCRIPT, 'utf8');
+    try { const r = await mainWin.webContents.executeJavaScript(`(async () => { ${body} })()`); console.log('[script]', JSON.stringify(r, null, 1)); } catch (err) { console.log('[script] ERROR', err.message); }
+    quitting = true; app.quit();
+  } else if (plan === 'review') {
+    /* dev: furniture fit, window, frames */
+    send('cmd', { time: 14 }); send('cmd', { noAuto: true });
+    send('cmd', { act: 'type' }); await wait(11000); await cap('r1_type_desk');
+    send('cmd', { cam: 'shoulder' }); await wait(3000); await cap('r2_type_shoulder');
+    send('cmd', { cam: 'wide' }); await wait(3000); await cap('r3_type_wide');
+    send('cmd', { act: 'read' }); await wait(11000); await cap('r4_read_nook');
+    send('cmd', { window: true }); send('cmd', { cam: 'wide' }); await wait(3500); await cap('r5_window_open');
+    send('cmd', { cam: 'window' }); await wait(3000); await cap('r6_window_cam');
+    quitting = true; app.quit();
+  } else if (plan === 'readme') {
     /* README walkthrough: first run → idle room → a full day of work → every tab → mini avatar */
     const js = (code) => mainWin.webContents.executeJavaScript(code).catch(() => null);
     const phase = () => js(`(() => { const c = H.app.creation; return c.state + ':' + c.phaseInfo.ph.id + ':' + Math.round(c.progress * 100); })()`);

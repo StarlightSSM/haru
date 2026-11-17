@@ -316,11 +316,14 @@
       }
     });
 
+    /* ----- arrangement: give the piece a shape instead of looping one texture ----- */
+    arrange(song, { r, sections, chordAt, root, iv, steps, beatSteps, bars, style, g });
+
     /* ----- reveal schedule: how the piece gets written ----- */
     const totalBars = bars;
     let acc = 0;
     const secSpan = sections.map((s) => { const a = acc; acc += s.len / totalBars; return [a, acc]; });
-    const layerWindow = { chord: [0, 0.25], pad: [0.05, 0.3], bass: [0.25, 0.45], drum: [0.45, 0.62], arp: [0.5, 0.65], lead: [0.62, 1], counter: [0.8, 1] };
+    const layerWindow = { chord: [0, 0.25], pad: [0.05, 0.3], bass: [0.25, 0.45], drum: [0.45, 0.62], arp: [0.5, 0.65], lead: [0.62, 1], lead2: [0.66, 1], counter: [0.8, 1] };
     const revFor = (s, layer) => {
       const bar = Math.floor(s / steps);
       const si = sections.findIndex((x) => bar >= x.start && bar < x.start + x.len);
@@ -336,6 +339,105 @@
     H.indexSong(song);
     return song;
   };
+
+  /* section energy (0..1) by role in the form */
+  const ENERGY = { intro: 0.35, A: 0.6, B: 0.75, A2: 0.7, C: 0.9, B2: 0.85, A3: 0.95, D: 0.5, A4: 1, outro: 0.4 };
+
+  function arrange(song, ctx) {
+    const { r, sections, chordAt, root, iv, steps, beatSteps, style } = ctx;
+    const N = song.notes, secOf = (s) => sections.find((x) => s >= x.start * steps && s < (x.start + x.len) * steps) || sections[sections.length - 1];
+    const energy = (sec) => ENERGY[sec.name] ?? 0.7;
+    const main = sections.filter((x) => /^A/.test(x.name));
+    const last = main[main.length - 1];
+    const inScale = (p) => iv.some((i) => mod(p - root - i, 12) === 0);
+    song.energy = sections.map(energy);
+
+    /* 1. dynamics follow the form */
+    N.forEach((n) => { const e = energy(secOf(n.s)); n.v = H.clamp(n.v * (0.5 + 0.62 * e), 0, 1.15); });
+    song.drums.forEach((d) => { const e = energy(secOf(d.s)); d.v = H.clamp(d.v * (0.48 + 0.62 * e), 0, 1.15); });
+
+    /* 2. layers come and go: arpeggio only when the music lifts, a breakdown in D */
+    song.notes = N.filter((n) => {
+      const sec = secOf(n.s), e = energy(sec);
+      if (n.t === 'arp' && e < 0.68) return false;
+      if (sec.name === 'D' && n.t === 'bass' && (n.s - sec.start * steps) < steps) return false;
+      return true;
+    });
+    song.drums = song.drums.filter((d) => {
+      const sec = secOf(d.s);
+      if (sec.name === 'D' && (d.n === 'k' || d.n === 's' || d.n === 'c') && (d.s - sec.start * steps) < steps * Math.min(2, sec.len)) return false;
+      if (energy(sec) < 0.5 && (d.n === 'h' || d.n === 'sh') && d.s % 2 === 1 && d.v < 0.6) return false;
+      return true;
+    });
+
+    /* 3. drums breathe: open hats / ghost snares when it's busy */
+    for (let b = 0; b < song.bars; b++) {
+      const sec = secOf(b * steps), e = energy(sec);
+      if (e >= 0.85 && b % 2 === 1 && Object.keys(ctx.g.drums || {}).includes('h')) song.drums.push({ s: b * steps + steps - Math.max(1, beatSteps / 2), n: 'o', v: 0.5 });
+      if (e >= 0.75 && Object.keys(ctx.g.drums || {}).includes('s') && r.chance(0.5)) song.drums.push({ s: b * steps + beatSteps * 2 - 1, n: 's', v: 0.22 });
+    }
+
+    /* 4. the melody hands over to a second voice in the B sections (if the style has one) */
+    const leads = style && style.insts && Array.isArray(style.insts.lead) ? style.insts.lead : null;
+    if (leads && leads.length > 1 && !['sitar', 'oud', 'gayageum', 'bandoneon', 'bell', 'whistle'].includes(song.insts.lead)) {
+      const alt = leads.find((x) => x !== song.insts.lead);
+      if (alt) {
+        song.insts.lead2 = alt;
+        song.notes.forEach((n) => { if (n.t === 'lead' && /^B|^D/.test(secOf(n.s).name)) n.t = 'lead2'; });
+      }
+    }
+
+    /* 5. melody grows on repeats: passing tones in A2/A3, harmony a third below in the last chorus */
+    const leadNotes = song.notes.filter((n) => n.t === 'lead' || n.t === 'lead2').sort((a, b) => a.s - b.s);
+    const add = [];
+    leadNotes.forEach((n, i) => {
+      const sec = secOf(n.s); const nx = leadNotes[i + 1];
+      if (/^A[23]$/.test(sec.name) && nx && nx.s - n.s >= 2 && Math.abs(nx.p - n.p) >= 3 && r.chance(0.35)) {
+        const dir = Math.sign(nx.p - n.p); let p = n.p + dir;
+        while (!inScale(p) && Math.abs(p - n.p) < 4) p += dir;
+        const mid = n.s + Math.floor((nx.s - n.s) / 2);
+        if (inScale(p) && mid > n.s) { n.d = Math.max(1, mid - n.s); add.push({ s: mid, d: Math.max(1, nx.s - mid), p, v: n.v * 0.78, t: n.t }); }
+      }
+      if (last && sec === last && n.d >= 1) {
+        let h = n.p - 3; if (!inScale(h)) h = n.p - 4; if (!inScale(h)) h = n.p - 5;
+        if (inScale(h)) add.push({ s: n.s, d: n.d, p: h, v: n.v * 0.5, t: n.t, harm: true });
+      }
+    });
+    song.notes.push(...add);
+
+    /* 6. richer chords at the peaks: add the 9th on top */
+    const seen = new Set();
+    song.notes.filter((n) => n.t === 'chord').forEach((n) => {
+      if (seen.has(n.s)) return; seen.add(n.s);
+      const sec = secOf(n.s); if (energy(sec) < 0.85) return;
+      const c = chordAt[Math.floor(n.s / steps)]; if (!c) return;
+      const top = Math.max(...c.notes); let p = c.notes[0] + 14; while (p <= top) p += 12;
+      if (inScale(p)) song.notes.push({ s: n.s, d: n.d, p, v: n.v * 0.6, t: 'chord' });
+    });
+
+    /* 7. bass walks into each new section */
+    sections.forEach((sec, si) => {
+      const nxt = sections[si + 1]; if (!nxt || sec.name === 'intro') return;
+      const lastBar = sec.start + sec.len - 1, target = chordAt[nxt.start];
+      if (!target) return;
+      const s0 = lastBar * steps + steps - beatSteps;
+      song.notes = song.notes.filter((n) => !(n.t === 'bass' && n.s >= s0 && n.s < (lastBar + 1) * steps));
+      let tp = 36 + target.rootPc; if (tp < 38) tp += 12;
+      const below = (p) => { let q = p - 1; while (!inScale(q) && q > p - 3) q--; return q; };
+      const walk = [below(below(tp)), below(tp), tp - 1]; /* two scale steps, then a chromatic lead-in */
+      walk.forEach((p, j) => song.notes.push({ s: s0 + Math.floor(j * beatSteps / 3), d: Math.max(1, Math.floor(beatSteps / 3)), p, v: 0.6 + j * 0.08, t: 'bass' }));
+    });
+
+    /* 8. pop-minded styles lift the last chorus up a step */
+    const lifts = style && ['bluesky', 'citynight', 'cinematic', 'folk'].includes(style.id);
+    if (lifts && last && main.length >= 3) {
+      const by = style.id === 'cinematic' ? 1 : 2;
+      const fromBar = last.start;
+      song.notes.forEach((n) => { if (n.s >= fromBar * steps) n.p += by; });
+      for (let b = fromBar; b < song.bars; b++) { const c = chordAt[b]; if (c) { c.notes = c.notes.map((p) => p + by); c.rootPc = mod(c.rootPc + by, 12); c.lifted = by; } }
+      song.modulation = { bar: fromBar, by };
+    }
+  }
 
   H.indexSong = function (song) {
     const idx = new Array(song.totalSteps + 1);
@@ -358,6 +460,27 @@
 
   H.stepSec = (song) => 60 / song.bpm / song.beatSteps;
   H.songDuration = (song) => song.totalSteps * H.stepSec(song) + 2.5;
+
+  /* --- does a thrown note fit here?  { ok, why } — why: chord | color | outside | clash | crowded | range --- */
+  H.judgeNote = function (song, step, midi) {
+    const s = Math.max(0, Math.min(song.totalSteps - 1, Math.round(step)));
+    const bar = Math.floor(s / song.steps);
+    const chord = song.chords[Math.min(bar, song.chords.length - 1)];
+    const pc = mod(midi, 12);
+    const lift = song.modulation && bar >= song.modulation.bar ? song.modulation.by : 0;
+    const scale = song.iv.map((i) => mod(song.root + lift + i, 12));
+    const tones = chord ? chord.notes.map((n) => mod(n, 12)) : [];
+    const strong = s % song.beatSteps === 0;
+    if (midi < song.range[0] - 7 || midi > song.range[1] + 9) return { ok: false, why: 'range' };
+    /* something already sounding right there, a step away → muddy */
+    const near = (song.byStep[s] || []).concat(song.byStep[s + 1] || []).filter((n) => (n.t === 'lead' || n.t === 'lead2') && !n.n);
+    if (near.some((n) => { const d = Math.abs(n.p - midi); return d === 1 || d === 2 || d === 11; })) return { ok: false, why: 'crowded' };
+    if (tones.includes(pc)) return { ok: true, why: 'chord' };
+    if (!scale.includes(pc)) return { ok: false, why: 'outside' };
+    /* a semitone above a chord tone on a strong beat is an "avoid note" */
+    if (strong && tones.some((t) => mod(pc - t, 12) === 1)) return { ok: false, why: 'clash' };
+    return { ok: true, why: 'color' };
+  };
 
   /* --- user mischief --- */
   H.insertUserNote = function (song, step, midi, rev) {

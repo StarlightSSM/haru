@@ -136,8 +136,8 @@
       }
       if (n.t === 'pad') { ctx.fillStyle = H.rgba('#8a8f98', 0.18); ctx.fillRect(x0, y + rowH * 0.3, x1 - x0, Math.max(1, rowH * 0.4)); return; }
       const active = play >= n.s && play < n.s + n.d;
-      ctx.fillStyle = n.by === 'you' ? '#ff4f8b' : active ? C.accent : n.t === 'lead' ? C.ink : C.muted;
-      const hh = Math.max(1.5, rowH * (n.t === 'lead' ? 0.62 : 0.4));
+      ctx.fillStyle = n.by === 'you' ? '#ff4f8b' : active ? C.accent : (n.t === 'lead' || n.t === 'lead2') ? C.ink : C.muted;
+      const hh = Math.max(1.5, rowH * ((n.t === 'lead' || n.t === 'lead2') ? 0.62 : 0.4));
       ctx.fillRect(x0 + 0.5, y + (rowH - hh) / 2, Math.max(2, x1 - x0 - 1.5), hh);
       if (fresh) { ctx.strokeStyle = C.accent; ctx.lineWidth = 1; ctx.strokeRect(x0 - 2, y - 2, x1 - x0 + 3, rowH + 4); }
     });
@@ -239,7 +239,7 @@
   H.drawToneGraph = function (ctx, w, h, song, playStep, reveal = 1) {
     const C = col(); ctx.clearRect(0, 0, w, h);
     if (!song) return;
-    const lead = song.notes.filter((n) => n.t === 'lead' && (n.rev ?? 0) <= reveal).sort((a, b) => a.s - b.s);
+    const lead = song.notes.filter((n) => (n.t === 'lead' || n.t === 'lead2') && !n.harm && (n.rev ?? 0) <= reveal).sort((a, b) => a.s - b.s);
     if (lead.length < 2) return;
     const count = {}, trans = {};
     lead.forEach((n, i) => { count[n.p] = (count[n.p] || 0) + 1; if (i) { const k = lead[i - 1].p + '>' + n.p; trans[k] = (trans[k] || 0) + 1; } });

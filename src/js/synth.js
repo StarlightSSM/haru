@@ -2,9 +2,11 @@
 (function (H) {
   'use strict';
 
-  const TRACK_GAIN = { lead: 0.8, chord: 0.42, pad: 0.3, bass: 0.75, arp: 0.38, counter: 0.45 };
+  const TRACK_GAIN = { lead: 0.8, lead2: 0.72, chord: 0.42, pad: 0.3, bass: 0.75, arp: 0.38, counter: 0.45 };
   /* stereo seat + reverb send per track (a clean, wide mix instead of everything dead-centre) */
-  const SEAT = { lead: [0.04, 0.32], chord: [-0.24, 0.22], pad: [0.18, 0.5], bass: [0, 0.02], arp: [0.32, 0.3], counter: [-0.36, 0.34], drum: [0, 0.07] };
+  const SEAT = { lead: [0.04, 0.32], lead2: [-0.1, 0.36], chord: [-0.24, 0.22], pad: [0.18, 0.5], bass: [0, 0.02], arp: [0.32, 0.3], counter: [-0.36, 0.34], drum: [0, 0.07] };
+  /* echo send per track (tempo-synced stereo delay) */
+  const ECHO = { lead: 0.16, lead2: 0.2, arp: 0.24, counter: 0.14, chord: 0.05 };
 
   function noiseBuffer(ctx, sec = 2, type = 'white') {
     const len = Math.floor(ctx.sampleRate * sec);
@@ -359,8 +361,16 @@
     const verbHp = ctx.createBiquadFilter(); verbHp.type = 'highpass'; verbHp.frequency.value = 220;
     input.connect(wobble); wobble.connect(lp); lp.connect(hp); hp.connect(warm); warm.connect(air); air.connect(sat); sat.connect(comp); comp.connect(out); out.connect(limit); limit.connect(dest);
     verbIn.connect(verbHp); verbHp.connect(verb); verb.connect(verbOut); verbOut.connect(comp);
+    /* ping-pong echo: dotted-eighth left, quarter right, darkened feedback */
+    const echoIn = ctx.createGain(); echoIn.gain.value = 1;
+    const dL = ctx.createDelay(2), dR = ctx.createDelay(2), fb = ctx.createGain(), eLp = ctx.createBiquadFilter(), eHp = ctx.createBiquadFilter();
+    eLp.type = 'lowpass'; eLp.frequency.value = 3800; eHp.type = 'highpass'; eHp.frequency.value = 300; fb.gain.value = 0.32;
+    const merge = ctx.createChannelMerger(2), eOut = ctx.createGain(); eOut.gain.value = 0.55;
+    echoIn.connect(eHp); eHp.connect(dL); dL.connect(eLp); eLp.connect(dR); dR.connect(fb); fb.connect(dL);
+    dL.connect(merge, 0, 0); dR.connect(merge, 0, 1); merge.connect(eOut); eOut.connect(comp); eOut.connect(verbIn);
     const chain = {
-      input, out, comp, verbIn,
+      input, out, comp, verbIn, echoIn,
+      setTempo(bpm) { const q = 60 / (bpm || 100); dL.delayTime.value = H.clamp(q * 0.75, 0.05, 1.5); dR.delayTime.value = H.clamp(q * 0.25, 0.03, 1); },
       setFx(f) {
         const lofi = H.clamp(f.lofi ?? 0.2);
         lp.frequency.value = 18000 * Math.pow(1 - lofi, 2.2) + 2200;
@@ -389,6 +399,7 @@
       const pan = ctx.createStereoPanner(); pan.pan.value = SEAT[k][0];
       const send = ctx.createGain(); send.gain.value = SEAT[k][1];
       g.connect(pan); pan.connect(chain.input); pan.connect(send); send.connect(chain.verbIn);
+      if (ECHO[k]) { const es = ctx.createGain(); es.gain.value = ECHO[k]; pan.connect(es); es.connect(chain.echoIn); b[k + 'Echo'] = es; }
       b[k] = g; b[k + 'Pan'] = pan; b[k + 'Send'] = send;
     });
     b.setSeats = (seats = {}) => Object.keys(SEAT).forEach((k) => { const v = seats[k] || SEAT[k]; b[k + 'Pan'].pan.value = v[0]; b[k + 'Send'].gain.value = v[1]; });
@@ -432,7 +443,7 @@
     master.gain.setValueAtTime(0, 0); master.gain.linearRampToValueAtTime(1, 0.05);
     master.gain.setValueAtTime(1, dur - 2.5); master.gain.linearRampToValueAtTime(0, dur - 0.1);
     const chain = makeChain(ctx, master, song.fx);
-    const buses = makeBuses(ctx, chain); buses.setSeats(song.seats);
+    const buses = makeBuses(ctx, chain); buses.setSeats(song.seats); chain.setTempo(song.bpm);
     await H.samples.ensure(H.songSamples(song)).catch(() => {});
     const voices = H.makeVoices(ctx);
     const sd = H.stepSec(song);
@@ -519,7 +530,7 @@
       this.init(); this.resume();
       this.song = song; this.opts = opts;
       this.chain.setFx(Object.assign({}, song.fx, opts.lofi != null && song.lofiOk !== false ? { lofi: Math.max(song.fx.lofi, opts.lofi) } : {}));
-      this.buses.setSeats(song.seats);
+      this.buses.setSeats(song.seats); this.chain.setTempo(song.bpm);
       H.samples.ensure(H.songSamples(song)).catch(() => {});
       this.step = opts.from ?? (opts.loop ? opts.loop[0] : 0);
       this.t0 = this.ctx.currentTime + 0.08 - this.step * H.stepSec(song);

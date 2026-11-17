@@ -110,6 +110,7 @@
     if (c.closeModal) { const b = document.querySelector('.modal-back'); if (b) b.querySelector('.modal-head .icon-btn').click(); }
     if (c.time != null) app.debugHours = c.time;
     if (c.noAuto) app.settings.general.autoCreate = false;
+    if (c.window != null) toggleWindow(c.window);
     if (c.items) { app.state.items = c.items.split(','); applyItems(); }
     if (c.act) { const map = { type: ['desk', 'type', 'desk'], paint: ['easel', 'paint', 'easel'], read: ['nook', 'read', 'nook'] }[c.act]; if (map) { app.holdIdleUntil = performance.now() + 60000; app.pet.goTo(map[0], map[1]); setCam(map[2]); } }
     if (c.weather) app.room.weather = Object.assign({ temp: 3, ko: c.weather }, H.describeWeather({ clear: 0, rain: 61, snow: 71, cloudy: 3, storm: 95 }[c.weather] ?? 0));
@@ -196,7 +197,7 @@
   };
 
   /* ================= apply settings ================= */
-  function applyAll() { applyVisual(); applyAudio(); applyItems(); window.haru && window.haru.applyWindowSettings(app.settings); }
+  function applyAll() { if (app.room.setWindowOpen) app.room.setWindowOpen(!!app.state.windowOpen); applyVisual(); applyAudio(); applyItems(); window.haru && window.haru.applyWindowSettings(app.settings); }
 
   function applyVisual() {
     const v = app.settings.visual;
@@ -228,8 +229,29 @@
       if (h >= 6 && h < 10 && (!w || w.sky === 'clear' || w.sky === 'partly')) lv.birds = Math.max(lv.birds, 0.35);
     }
     if (app.room.items.has('record')) lv.vinyl = Math.min(1, lv.vinyl + 0.15);
+    /* an open window lets the outside in */
+    if (app.state.windowOpen) {
+      const w = app.room.weather, h = hoursNow();
+      lv.wind = Math.max(lv.wind || 0, 0.3);
+      if (w && (w.sky === 'rain' || w.sky === 'storm')) lv.rain = Math.min(1, Math.max(lv.rain || 0, 0.4) * 1.6);
+      if (h >= 6 && h < 18) lv.birds = Math.max(lv.birds || 0, 0.4); else lv.night = Math.max(lv.night || 0, 0.45);
+    }
     app.audio.setAmbience(lv);
   }
+
+  function toggleWindow(force) {
+    const open = force != null ? !!force : !app.state.windowOpen;
+    app.state.windowOpen = open;
+    if (app.room.setWindowOpen) app.room.setWindowOpen(open);
+    app.audio.sfx(open ? 'page' : 'knock');
+    applyAmbience(); app.saveState();
+    const w = app.room.weather, h = hoursNow();
+    const rainy = w && (w.sky === 'rain' || w.sky === 'storm');
+    if (open) app.say(rainy ? '앗, 빗방울 들어온다! 그래도 빗소리 좋다…' : h >= 19 || h < 5 ? '밤공기 시원하다. 풀벌레 소리 들려?' : '바람 들어온다~ 환기 좀 하자!', { quiet: true });
+    else app.say(rainy ? '창문 닫을게. 악보 젖으면 안 되니까!' : '창문 닫았어. 이제 집중!', { quiet: true });
+    if (app.pet.spot !== 'window' && !app.creation.active) app.pet.flash('stretch', 1.4, 'happy');
+  }
+  app.toggleWindow = toggleWindow;
 
   function applyItems() {
     const owned = new Set(app.state.items || []);
@@ -257,6 +279,8 @@
     if (v === 'lab') renderLab();
     if (v === 'taste') renderTaste();
     if (v !== 'taste' && app.tastePreview) stopTastePreview(true);
+    if (v !== 'lab' && app.labPlaying) stopLab();
+    if (v !== 'studio' && app.transportPlaying) stopTransport();
     setTimeout(resizeAll, 0);
   }
 
@@ -306,7 +330,7 @@
 
   /* ================= room HUD ================= */
   const TOOLS = [
-    ['pat', '쓰다듬기'], ['snack', '간식'], ['coffee', '커피'], '|', ['note', '음 던지기'], ['drum', '리듬 바꾸기'], ['tempo', '템포'], ['palette', '물감 쏟기'], ['whisper', '속삭이기'], '|', ['talk', '말 걸기'], ['bulb', '불 켜기'], ['knock', '노크'],
+    ['pat', '쓰다듬기'], ['snack', '간식'], ['coffee', '커피'], '|', ['note', '음 던지기'], ['drum', '리듬 바꾸기'], ['tempo', '템포'], ['palette', '물감 쏟기'], ['whisper', '속삭이기'], '|', ['talk', '말 걸기'], ['bulb', '불 켜기'], ['window', '창문'], ['knock', '노크'],
   ];
 
   function buildRoomHud() {
@@ -331,10 +355,12 @@
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touches.size === 2) {
         const [a, b] = [...touches.values()];
-        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: R().is3D ? 1 : R().camTarget.z };
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: R().is3D ? 1 : R().camTarget.z, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
         drag = null; return;
       }
-      drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: false, cam: R().is3D ? null : Object.assign({}, R().camTarget) };
+      /* right button / shift / middle button = move the observer instead of turning */
+      const panMode = e.pointerType === 'mouse' && (e.button === 2 || e.button === 1 || e.shiftKey);
+      drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: false, pan: panMode, cam: R().is3D ? null : Object.assign({}, R().camTarget) };
       cv.setPointerCapture(e.pointerId);
     });
     const endTouch = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
@@ -345,15 +371,23 @@
       if (pinch && touches.size === 2) {
         const [a, b] = [...touches.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
-        if (R().is3D) { R().zoom(pinch.d / Math.max(1, d)); pinch.d = d; }
-        else { const t = R().camTarget; R().setCameraTarget(t.x, t.y, H.clamp(pinch.z * d / pinch.d, 1, 4)); }
+        const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+        /* two fingers: spread/pinch = closer/further, slide together = the observer moves */
+        if (R().is3D) {
+          R().zoom(pinch.d / Math.max(1, d)); pinch.d = d;
+          if (R().pan) R().pan(cx - pinch.cx, cy - pinch.cy);
+        } else {
+          const t = R().camTarget, s = R().view.s;
+          R().setCameraTarget(t.x - (cx - pinch.cx) / s, t.y - (cy - pinch.cy) / s, H.clamp(pinch.z * d / pinch.d, 1, 4));
+        }
+        pinch.cx = cx; pinch.cy = cy;
         goFree(); return;
       }
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (Math.hypot(dx, dy) > 6) drag.moved = true;
         if (drag.moved) {
-          if (R().is3D) R().orbit(e.clientX - drag.lx, e.clientY - drag.ly);
+          if (R().is3D) { if (drag.pan && R().pan) R().pan(e.clientX - drag.lx, e.clientY - drag.ly); else R().orbit(e.clientX - drag.lx, e.clientY - drag.ly); }
           else {
             const s = R().view.s;
             R().setCameraTarget(drag.cam.x - dx / s, drag.cam.y - dy / s, drag.cam.z);
@@ -370,9 +404,10 @@
     cv.addEventListener('pointerup', (e) => {
       endTouch(e);
       cv.classList.remove('grab');
-      if (drag && !drag.moved) roomClick(e);
+      if (drag && !drag.moved && !drag.pan) roomClick(e);
       drag = null;
     });
+    cv.addEventListener('contextmenu', (e) => e.preventDefault());
     cv.addEventListener('wheel', (e) => {
       e.preventDefault();
       if (R().is3D) { R().zoom(e.deltaY < 0 ? 1 / 1.12 : 1.12); goFree(); return; }
@@ -411,7 +446,7 @@
       return;
     }
     if (hit === 'pet') tool('pat');
-    else if (hit === 'window') tool('knock');
+    else if (hit === 'window') toggleWindow();
     else if (hit === 'kitty') app.say(H.fillLine('kitty'));
     else if (hit === 'easel' && app.creation.active) setCam('easel');
   }
@@ -451,6 +486,7 @@
       case 'whisper': openPop('whisper'); break;
       case 'talk': talk(); break;
       case 'bulb': app.room.lampOn = !app.room.lampOn; app.audio.sfx('click'); break;
+      case 'window': toggleWindow(); break;
       case 'knock': app.audio.sfx('knock'); pet.flash('surprised', 0.8, 'surprised'); pet.look = { x: pet.x > 520 ? -1 : 1, y: -1 }; setTimeout(() => app.say(H.fillLine('knock', {})), 500); break;
       default: break;
     }
@@ -462,14 +498,17 @@
     else { app.painter.splash(x, y, color); app.audio.sfx('splash'); app.pet.flash('surprised', 1, 'surprised'); app.say(H.fillLine('splash')); }
   }
 
+  /* 16 chromatic pads from the song's root; notes outside the scale are shown faint (the pet may refuse them) */
   function scaleNotes() {
     const song = app.creation.song;
     const root = song ? song.root + 12 : 60;
     const iv = song ? song.iv : H.SCALES.pentaMajor.iv;
     const out = [];
-    for (let i = 0; out.length < 16; i++) out.push(root + iv[i % iv.length] + 12 * Math.floor(i / iv.length));
+    for (let i = 0; i < 16; i++) out.push(root + i);
+    out.inScale = (m) => iv.some((x) => ((m - root - x) % 12 + 12) % 12 === 0);
     return out;
   }
+  function notePad(m, notes) { const b = el('button', { class: 'pad' + (notes.inScale(m) ? '' : ' out'), title: notes.inScale(m) ? '' : '음계 밖의 음 — 안 어울리면 안 넣을 수도 있어요', onclick: () => throwNote(m, b) }, H.midiName(m)); return b; }
 
   function throwNote(midi, padEl) {
     if (padEl) { padEl.classList.add('hit'); setTimeout(() => padEl.classList.remove('hit'), 220); }
@@ -491,7 +530,7 @@
     if (kind === 'note') {
       head('THROW A NOTE · 음 던지기', live ? `${cr.song.keyName} ${cr.song.scaleKo} — 지금 곡에 들어가요` : '작곡 중일 때 누르면 곡에 들어가요');
       const pads = el('div', { class: 'pads' });
-      scaleNotes().forEach((m) => { const b = el('button', { class: 'pad', onclick: () => throwNote(m, b) }, H.midiName(m)); pads.appendChild(b); });
+      { const ns = scaleNotes(); ns.forEach((m) => pads.appendChild(notePad(m, ns))); }
       pop.appendChild(pads);
     } else if (kind === 'drum') {
       head('SWAP RHYTHM · 리듬 바꾸기', live ? '지금 곡의 드럼이 바뀌어요' : '리듬 랩에서 들어볼 수 있어요');
@@ -684,7 +723,7 @@
 
   function buildPads() {
     const pads = $('pads'); pads.innerHTML = '';
-    scaleNotes().forEach((m) => { const b = el('button', { class: 'pad', onclick: () => throwNote(m, b) }, H.midiName(m)); pads.appendChild(b); });
+    { const ns = scaleNotes(); ns.forEach((m) => pads.appendChild(notePad(m, ns))); }
   }
 
   function renderSongInfo() {
@@ -698,13 +737,23 @@
   }
 
   function renderTransport() {
-    const t = $('transport'); t.innerHTML = '';
-    t.appendChild(el('button', { class: 'btn', onclick: () => {
+    const t = $('transport'); if (!t) return; t.innerHTML = '';
+    t.appendChild(el('button', { class: 'btn' + (app.transportPlaying ? ' primary' : ''), onclick: () => {
+      if (app.transportPlaying) { stopTransport(); return; }
       const s = curSong(); if (!s) { H.toast('아직 곡이 없어요.'); return; }
       if (app.creation.state === 'running' && app.creation.phaseInfo.ph.id === 'compose') { H.toast('작곡 중엔 그 아이가 연주하고 있어요.'); return; }
-      app.audio.play(s, { repeat: false, lofi: app.settings.audio.lofi });
-    } }, '▶ 처음부터 듣기'));
-    t.appendChild(el('button', { class: 'btn', onclick: () => app.audio.stop() }, '■ 멈춤'));
+      app.transportPlaying = true; app.transportSong = s;
+      app.audio.play(s, { repeat: false, lofi: app.settings.audio.lofi, onEnd: () => { app.transportPlaying = false; renderTransport(); } });
+      renderTransport();
+    } }, app.transportPlaying ? '■ 멈춤' : '▶ 처음부터 듣기'));
+  }
+  function stopTransport() {
+    app.transportPlaying = false;
+    if (app.audio.song !== app.transportSong) { renderTransport(); return; } /* something else (e.g. live composing) took over */
+    app.audio.stop();
+    const cr = app.creation;
+    if (cr.state === 'running' && cr.phaseInfo.ph.id === 'paint' && cr.song) app.audio.play(cr.song, { repeat: true, lofi: app.settings.audio.lofi });
+    renderTransport();
   }
 
   /* ================= Rhythm Lab ================= */
@@ -788,7 +837,7 @@
       slider('BPM', 'bpm', Math.round(g.bpm[0] * 0.6), Math.round(g.bpm[1] * 1.4), 1, (x) => Math.round(x)),
       slider('스윙', 'swing', 0.5, 0.72, 0.01, (x) => Math.round((x - 0.5) * 200) + '%'),
       tog('화음', 'chords'), tog('베이스', 'bass'),
-      el('button', { class: 'btn accent', title: '같이 듣고 나서 누르면 그 아이가 이 장르를 배워요', onclick: teachGenre }, fam ? `들려주기 (익힘 ${Math.round(fam * 100)}%)` : '들려주기 · 가르치기'),
+      el('button', { class: 'btn accent', id: 'lab-teach', title: '▶ 재생으로 6초 같이 들을 때마다 한 번씩 가르칠 수 있어요', onclick: teachGenre }, teachLabel(g)),
       el('button', { class: 'btn', onclick: () => requestGenre(g.id) }, app.state.request === g.id ? '✓ 다음 곡 요청됨' : '다음 곡은 이걸로!'),
       live ? el('button', { class: 'btn', onclick: () => { const pat = {}; Object.keys(app.lab.grid).forEach((k) => { pat[k] = app.lab.grid[k].join(''); }); app.creation.intervene('rhythm', { genreId: g.id, pattern: pat }); stopLab(); setView('room'); } }, '지금 곡에 이 리듬 넣기 (장난)') : null].filter(Boolean));
   }
@@ -817,19 +866,42 @@
     else app.pet.flash('dance', 3, 'happy');
   }
   function stopLab() {
-    app.labPlaying = false; app.audio.stop();
+    app.labPlaying = false;
+    if (app.audio.song !== app.labSong) return;
+    app.audio.stop();
     if (app.creation.state === 'running') { app.creation.curSec = -1; if (app.creation.phaseInfo.ph.id === 'paint' && app.creation.song) app.audio.play(app.creation.song, { repeat: true, lofi: app.settings.audio.lofi }); }
   }
 
+  const TEACH_SEC = 6, TEACH_PER_DAY = 6;
+  function teachState(g) {
+    const st = app.state;
+    if (!st.taught || st.taught.date !== H.dateKey()) st.taught = { date: H.dateKey(), n: {} };
+    const used = st.taught.n[g.id] || 0;
+    const left = app.labPlaying ? Math.max(0, TEACH_SEC - (performance.now() - app.lab.listenFrom) / 1000) : TEACH_SEC;
+    return { used, left, capped: used >= TEACH_PER_DAY, fam: app.state.known[g.id] || 0 };
+  }
+  function teachLabel(g) {
+    const t = teachState(g);
+    const pct = t.fam ? ` · 익힘 ${Math.round(t.fam * 100)}%` : '';
+    if (t.fam >= 1) return `다 익혔어요 (100%)`;
+    if (t.capped) return `오늘은 충분히 배웠어요${pct}`;
+    if (!app.labPlaying) return `▶ 재생 후 들려주기${pct}`;
+    if (t.left > 0) return `같이 듣는 중… ${Math.ceil(t.left)}초${pct}`;
+    return `들려주기 · 가르치기${pct}`;
+  }
   function teachGenre() {
     const g = H.GENRE[app.lab.genreId];
-    if (!app.labPlaying || performance.now() - app.lab.listenFrom < 6000) { H.toast('먼저 ▶ 재생으로 6초 이상 같이 들어주세요.'); return; }
-    const today = H.dateKey();
-    const key = g.id + today;
-    if (app.lab.taught[key] >= 2) { app.say(`${g.ko}는 오늘 충분히 들었어! 내일 또 들려줘.`); return; }
-    app.lab.taught[key] = (app.lab.taught[key] || 0) + 1;
-    const before = app.state.known[g.id] || 0;
-    app.state.known[g.id] = H.clamp(before + (before ? 0.15 : 0.3));
+    const t = teachState(g);
+    if (t.fam >= 1) { H.toast(`${g.ko}는 이미 다 익혔어요.`); return; }
+    if (t.capped) { H.toast(`${g.ko}는 오늘 충분히 배웠어요. 내일 또 들려주세요. (하루 ${TEACH_PER_DAY}번)`); app.say(`${g.ko}는 오늘 충분히 들었어! 내일 또 들려줘.`); return; }
+    if (!app.labPlaying) { H.toast('먼저 ▶ 재생을 눌러 같이 들어주세요.'); return; }
+    if (t.left > 0) { H.toast(`${Math.ceil(t.left)}초만 더 같이 들어주세요.`); return; }
+    app.state.taught.n[g.id] = t.used + 1;
+    app.lab.listenFrom = performance.now(); /* the next lesson needs another 6 s together */
+    const before = t.fam;
+    /* first lesson is big, later ones a little smaller (but always visible) */
+    app.state.known[g.id] = H.clamp(before + (before ? Math.max(0.06, 0.16 - before * 0.08) : 0.3));
+    H.toast(`${g.ko} 익힘 ${Math.round(before * 100)}% → ${Math.round(app.state.known[g.id] * 100)}%`);
     app.state.xp += 10;
     app.pet.nudge('inspiration', 6); app.pet.nudge('bond', 1);
     app.pet.flash('happy', 2, 'happy');
@@ -847,6 +919,7 @@
   }
 
   function updateLabCursor() {
+    if (app.view === 'lab') { const b = $('lab-teach'); if (b) { const txt = teachLabel(H.GENRE[app.lab.genreId]); if (b.textContent !== txt) b.textContent = txt; } }
     if (!app.labPlaying || app.view !== 'lab' || !app.labSong) return;
     const st = Math.floor(app.audio.playStep);
     if (st < 0) return;
@@ -876,6 +949,7 @@
         st.styleRequest ? el('div', { class: 'hint' }, `다음 곡 추천: ${H.STYLE[st.styleRequest].ko}`) : null),
       el('div', { class: 'recent' }, recent.length ? `최근 고른 스타일 → ${recent.map((id) => (H.STYLE[id] || {}).ko || id).join(' · ')}` : '아직 이 취향으로 만든 곡이 없어요.'));
     grid.innerHTML = '';
+    renderArtTaste();
     H.STYLES.forEach((s) => {
       const t = tasteOf(s.id);
       const playing = app.tastePreview === s.id;
@@ -889,6 +963,31 @@
         el('div', { class: 'btns' },
           el('button', { class: 'btn' + (playing ? ' primary' : ''), onclick: () => (playing ? stopTastePreview() : playTastePreview(s.id)) }, playing ? '■ 멈춤' : '▶ 같이 듣기'),
           el('button', { class: 'btn', onclick: () => requestStyle(s.id) }, st.styleRequest === s.id ? '✓ 추천함' : '다음 곡에 추천'))));
+    });
+  }
+
+  function renderArtTaste() {
+    const box = $('art-taste'); if (!box) return;
+    const st = app.state;
+    const known = Object.assign({}, H.DEFAULT_ART_KNOWN, st.artKnown);
+    box.innerHTML = '';
+    box.append(el('div', { class: 'panel-head' }, el('span', { class: 'lbl' }, 'ART · 그림 화풍'), el('span', { class: 'lbl muted' }, `${H.ART_STYLES.length}가지 · 그릴수록 익숙해져요`)));
+    const list = el('div', { class: 'art-list' });
+    H.ART_STYLES.forEach((a) => {
+      const k = H.clamp(known[a.id] || 0);
+      list.appendChild(el('div', { class: 'art-item' + (st.artRequest === a.id ? ' req' : '') },
+        el('canvas', { class: 'art-thumb', 'data-style': a.id, width: 96, height: 96 }),
+        el('div', null, el('b', null, a.ko), el('small', null, H.ART_DESC[a.id] || ''),
+          el('div', { class: 'like' }, el('div', { class: 'bar' }, el('i', { style: { width: Math.round(k * 100) + '%' } })), el('span', null, k < 0.12 ? '아직 안 그려봄' : `익숙함 ${Math.round(k * 100)}%`))),
+        el('button', { class: 'btn', onclick: () => { st.artRequest = st.artRequest === a.id ? null : a.id; if (st.artRequest) app.say(k < 0.12 ? `${a.ko}? 처음이지만 해볼게!` : `좋아, 다음 그림은 ${a.ko}로!`); app.saveState(); renderArtTaste(); } }, st.artRequest === a.id ? '✓ 추천함' : '다음 그림에 추천')));
+    });
+    box.appendChild(list);
+    /* tiny previews painted with today's (or a neutral) palette */
+    const pal = (app.creation.artPlan && app.creation.artPlan.palette) || H.makePalette({ valence: 0.3, arousal: 0.5, tension: 0.2 }, {}, 7);
+    const kws = ((app.creation.world && app.creation.world.keywords) || ['하루', '음악', '그림', '세상'].map((w, i) => ({ w, norm: 1 - i * 0.2, score: 5 - i })));
+    box.querySelectorAll('canvas.art-thumb').forEach((c) => {
+      const plan = H.planPainting({ seed: 11, style: c.dataset.style, palette: pal, keywords: kws, edges: [] });
+      c.getContext('2d').drawImage(H.renderArt(plan, 96), 0, 0);
     });
   }
 
@@ -1028,6 +1127,8 @@
     st.known[record.genreId] = H.clamp(fam + 0.08);
     /* making something it's proud of makes it like that sound a little more */
     if (record.musicStyle) H.nudgeTaste(st, record.musicStyle, 0.02 + (quality - 55) / 900);
+    /* painting a style makes it more familiar */
+    if (record.style) { st.artKnown = Object.assign({}, H.DEFAULT_ART_KNOWN, st.artKnown); st.artKnown[record.style] = H.clamp((st.artKnown[record.style] || 0) + 0.1); }
     st.history = (st.history || []).concat([{ date: record.date, keywords: record.keywords, genreId: record.genreId, style: record.musicStyle, title: record.title }]).slice(-30);
     app.pet.nudge('energy', -15); app.pet.nudge('inspiration', -20); app.pet.nudge('bond', 3); app.pet.nudge('mood', 5);
     app.saveState();

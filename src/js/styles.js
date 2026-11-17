@@ -175,7 +175,7 @@
   /* human-readable instrument list of a song */
   H.songInstKo = function (song) {
     const I = song.insts || {};
-    return ['lead', 'double', 'chord', 'arp', 'counter', 'pad', 'bass'].filter((k) => I[k]).map((k) => H.instKo(I[k]))
+    return ['lead', 'lead2', 'double', 'chord', 'arp', 'counter', 'pad', 'bass'].filter((k) => I[k]).map((k) => H.instKo(I[k]))
       .filter((v, i, a) => a.indexOf(v) === i).join(' · ');
   };
 })(window.H);

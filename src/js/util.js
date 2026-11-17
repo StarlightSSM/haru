@@ -77,6 +77,16 @@ window.H = window.H || {};
   H.rgbToHex = ({ r, g, b }) => '#' + [r, g, b].map((v) => H.clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join('');
   H.mix = (a, b, t) => { const A = H.hexToRgb(a), B = H.hexToRgb(b); return H.rgbToHex({ r: H.lerp(A.r, B.r, t), g: H.lerp(A.g, B.g, t), b: H.lerp(A.b, B.b, t) }); };
   H.shade = (hex, amt) => (amt >= 0 ? H.mix(hex, '#ffffff', amt) : H.mix(hex, '#000000', -amt));
+  /* rough Korean colour name for a hex (for the pet's lines) */
+  H.colorName = (hex) => {
+    const { r, g, b } = H.hexToRgb(hex); const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 510;
+    if (mx - mn < 24) return l > 0.85 ? '하얀색' : l < 0.2 ? '검은색' : '회색';
+    let h = 0; const d = mx - mn;
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+    const names = [[15, '빨간색'], [40, '주황색'], [65, '노란색'], [160, '초록색'], [200, '청록색'], [255, '파란색'], [290, '보라색'], [348, '분홍색'], [360, '빨간색']];
+    return names.find(([lim]) => h < lim)[1];
+  };
   H.rgba = (hex, a) => { const c = H.hexToRgb(hex); return `rgba(${c.r},${c.g},${c.b},${a})`; };
 
   /* ---------- event bus ---------- */

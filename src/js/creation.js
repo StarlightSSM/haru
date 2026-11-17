@@ -126,7 +126,11 @@
       this.plan.scale = this.song.scaleName; this.plan.root = this.song.root;
       H.samples && H.samples.ensure(H.songSamples(this.song)).catch(() => {});
       this.song.title = opts.title || H.makeTitle(w, this.seed);
-      const style = H.chooseArtStyle(w.mood, r, app.settings.creation.artStyle);
+      const artKnown = Object.assign({}, H.DEFAULT_ART_KNOWN, st.artKnown);
+      let style = H.chooseArtStyle(w.mood, r, app.settings.creation.artStyle, artKnown);
+      if (st.artRequest && H.ART_STYLES.some((x) => x.id === st.artRequest) && !opts.title) { style = st.artRequest; st.artRequest = null; }
+      if (opts.artStyle) style = opts.artStyle;
+      this.artFirst = (artKnown[style] || 0) < 0.12;
       const palette = H.makePalette(w.mood, w.cats, this.seed);
       this.artPlan = H.planPainting({ seed: this.seed, style, palette, keywords: w.keywords, edges: w.edges });
       app.painter.setPlan(this.artPlan);
@@ -215,7 +219,7 @@
       }
       if (ph.id === 'paint') {
         app.audio.stop();
-        this.pendingSplashes.splice(0).forEach((s) => app.painter.splash(s.x, s.y, s.color));
+        this.pendingSplashes.splice(0).forEach((s) => app.painter.splash(s.x, s.y, s.color, 0.06, s.seed));
         pet.goTo('easel', 'paint', () => {
           app.say(H.fillLine('paint_start', { style: (H.ART_STYLES.find((s) => s.id === this.artPlan.style) || {}).ko }));
           if (this.song && !app.labPlaying) app.audio.play(this.song, { repeat: true, lofi: app.settings.audio.lofi });
@@ -279,12 +283,25 @@
           let step = iv.step;
           if (step == null) { const ps = app.audio.playStep; step = ps >= 0 ? ps : this.reveal * this.song.totalSteps; }
           iv.step = Math.round(step);
+          /* the pet only keeps notes it thinks belong in the piece */
+          const verdict = iv.fit || H.judgeNote(this.song, iv.step, iv.midi);
+          iv.fit = verdict;
+          if (!verdict.ok) {
+            this.log.rejected = (this.log.rejected || 0) + 1;
+            if (!silent) {
+              app.audio.note(iv.midi, this.song.insts.lead, 0.35, 0.35);
+              pet.flash('think', 1.4, 'neutral');
+              app.say(H.fillLine('note_reject_' + verdict.why, { note: H.midiName(iv.midi), chord: (this.song.chords[Math.floor(iv.step / this.song.steps)] || {}).name || '' }));
+              H.emit('creation:noteRejected', iv);
+            }
+            return true;
+          }
           H.insertUserNote(this.song, iv.step, iv.midi, Math.max(0, this.reveal - 0.0001));
           this.log.notes++;
           if (!silent) {
             app.audio.note(iv.midi, this.song.insts.lead, 0.6, 0.7);
             app.room.emit({ type: 'note', text: '♪', x: 800 + (Math.random() - 0.5) * 300, y: 350, target: { x: 800, y: 590 }, vx: 0, vy: 0, life: 1.6, color: '#ff4f8b', size: 30 });
-            if (good) { pet.flash('happy', 1.4, 'happy'); app.say(H.fillLine('note_good', { note: H.midiName(iv.midi) })); pet.nudge('bond', 0.6); }
+            if (good) { pet.flash('happy', 1.4, 'happy'); app.say(H.fillLine(verdict.why === 'chord' ? 'note_good' : 'note_color', { note: H.midiName(iv.midi) })); pet.nudge('bond', 0.6); }
             else { pet.flash('surprised', 1.0, 'annoyed'); app.say(H.fillLine('note_annoyed')); pet.nudge('focus', -6); }
           }
           return true;
@@ -307,9 +324,16 @@
         }
         case 'splash': {
           this.log.splash++;
+          if (iv.seed == null) iv.seed = Math.floor(Math.random() * 1e9);
+          this.log.colors = (this.log.colors || []).concat([iv.color]).slice(-6);
           if (phase !== 'paint') this.pendingSplashes.push(iv);
-          else app.painter.splash(iv.x, iv.y, iv.color);
-          if (!silent) { app.audio.sfx('splash'); pet.flash('surprised', 1.2, good ? 'happy' : 'annoyed'); app.say(H.fillLine('splash')); if (!good) pet.nudge('focus', -5); }
+          else app.painter.splash(iv.x, iv.y, iv.color, 0.06, iv.seed);
+          if (!silent) {
+            app.audio.sfx('splash'); pet.flash('surprised', 1.2, good ? 'happy' : 'annoyed'); app.say(H.fillLine('splash')); if (!good) pet.nudge('focus', -5);
+            /* a moment later it decides to use the colour */
+            const cname = H.colorName(iv.color);
+            setTimeout(() => { if (this.state === 'running') { pet.flash('paint', 1.5, 'happy'); app.say(H.fillLine(phase === 'paint' ? 'splash_adopt' : 'splash_later', { color: cname })); } }, 2600);
+          }
           return true;
         }
         case 'whisper': {
@@ -348,7 +372,7 @@
         step('art', 0.5);
         const w = this.world;
         const styleKo = (H.ART_STYLES.find((s) => s.id === this.artPlan.style) || {}).ko;
-        const diary = await H.writeDiary({ world: w, song: this.song, art: { styleKo }, log: this.log, petName: app.settings.petName, date: this.date }, app.settings.ai);
+        const diary = await H.writeDiary({ world: w, song: this.song, art: { styleKo, first: this.artFirst, splashes: (this.artPlan.splashes || []).length }, log: this.log, petName: app.settings.petName, date: this.date }, app.settings.ai);
         if (diary.title) this.song.title = diary.title;
         const meta = {
           title: this.song.title, date: this.date, genre: `${this.song.genre}`, key: `${this.song.keyName} ${this.song.scaleKo}`, bpm: this.song.bpm,
@@ -417,14 +441,14 @@
       this.app.state.creation = {
         date: this.date, seed: this.seed, elapsed: this.elapsed, totalMs: this.totalMs, extra: this.extra,
         world: this.world ? Object.assign({}, this.world) : null,
-        genreId: this.plan && this.plan.genreId, styleId: this.plan && this.plan.styleId, scale: this.plan && this.plan.scale, root: this.plan && this.plan.root, title: this.song && this.song.title,
+        genreId: this.plan && this.plan.genreId, styleId: this.plan && this.plan.styleId, artStyle: this.artPlan && this.artPlan.style, scale: this.plan && this.plan.scale, root: this.plan && this.plan.root, title: this.song && this.song.title,
         interventions: this.interventions, log: this.log,
       };
       this.app.saveState();
     }
 
     async resume(saved) {
-      await this.start({ seed: saved.seed, elapsed: saved.elapsed, world: saved.world, extra: saved.extra, log: saved.log, interventions: saved.interventions, genreId: saved.genreId, styleId: saved.styleId, scale: saved.scale, root: saved.root, title: saved.title });
+      await this.start({ seed: saved.seed, elapsed: saved.elapsed, world: saved.world, extra: saved.extra, log: saved.log, interventions: saved.interventions, genreId: saved.genreId, styleId: saved.styleId, artStyle: saved.artStyle, scale: saved.scale, root: saved.root, title: saved.title });
       this.date = saved.date;
       this.totalMs = saved.totalMs || this.totalMs;
       if (!saved.world) return;

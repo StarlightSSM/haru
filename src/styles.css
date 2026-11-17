@@ -116,6 +116,7 @@ main { position: absolute; top: var(--tb-h); left: 0; right: 0; bottom: 0; }
 .pads { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
 .pad { border: 1px solid var(--line); background: var(--paper); border-radius: 5px; height: 34px; font: 11px var(--mono); color: var(--muted); min-width: 52px; transition: background .15s; }
 .pad:hover { border-color: var(--ink); color: var(--ink); }
+.pad.out { opacity: .55; border-style: dashed; }
 .pad.hit { background: var(--accent2); color: #fff; border-color: var(--accent2); }
 .genre-pills { display: flex; flex-wrap: wrap; gap: 5px; max-height: 210px; overflow: auto; }
 .gpill { border: 1px solid var(--line); background: var(--paper); border-radius: 99px; padding: 4px 10px; font-size: 11.5px; }
@@ -230,6 +231,16 @@ main { position: absolute; top: var(--tb-h); left: 0; right: 0; bottom: 0; }
 .cell.x { background: var(--accent); border-color: var(--accent); }
 .cell.o { background: var(--paper); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 9px var(--accent2); }
 .cell.play { outline: 2px solid var(--accent2); outline-offset: 1px; }
+/* taste — art styles */
+.art-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; margin-top: 8px; }
+.art-item { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+.art-item.req { box-shadow: 0 0 0 2px var(--accent) inset; }
+.art-item canvas { width: 64px; height: 64px; border-radius: 6px; border: 1px solid var(--line); }
+.art-item b { font-size: 13px; } .art-item small { display: block; font-size: 11px; color: var(--muted); line-height: 1.4; }
+.art-item .like { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+.art-item .like .bar { height: 5px; background: var(--faint); border-radius: 3px; overflow: hidden; } .art-item .like .bar i { display: block; height: 100%; background: var(--accent); }
+.art-item .btn { font-size: 11.5px; padding: 4px 8px; white-space: nowrap; }
+@media (max-width: 600px) { .art-list { grid-template-columns: 1fr; } }
 /* taste */
 .taste { position: absolute; inset: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 .taste-head { display: grid; grid-template-columns: 1fr auto; gap: 6px 18px; align-items: center; }

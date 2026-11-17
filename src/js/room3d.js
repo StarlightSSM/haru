@@ -52,7 +52,16 @@
       this.char = null;
     }
 
-    camState(name) { const c = CAMS[name] || CAMS.wide; return { p: new T.Vector3(...c.p), t: new T.Vector3(...c.t), fov: c.fov }; }
+    camState(name) {
+      const c = CAMS[name] || CAMS.wide;
+      const st = { p: new T.Vector3(...c.p), t: new T.Vector3(...c.t), fov: c.fov };
+      /* desk-side shots follow the fitted desk height (presets were framed for a 0.77 m desk) */
+      if (this.fit && (name === 'desk' || name === 'shoulder' || name === 'close')) {
+        const dy = ((this.fit.deskLive ?? this.fit.desk) || 0.77) - 0.77;
+        st.p.y += dy; st.t.y += dy * (name === 'shoulder' ? 0.6 : 1);
+      }
+      return st;
+    }
 
     /* ---------------- lights ---------------- */
     buildLights(mobile) {
@@ -228,7 +237,7 @@
       this.addPlant(s, -2.35, 0.98, -2.15, 0.5);
 
       /* desk */
-      const desk = new T.Group(); desk.position.set(0, 0, -0.6); s.add(desk);
+      const desk = new T.Group(); desk.position.set(0, 0, -0.6); s.add(desk); this.desk = desk;
       hit(add(desk, box(1.95, 0.05, 0.62), wood, { pos: [0, 0.745, 0], outline: 0.005, receive: true }), 'desk');
       hit(add(desk, box(1.85, 0.52, 0.03), woodD, { pos: [0, 0.46, 0.27], outline: 0.004, receive: true }), 'desk');
       [-0.9, 0.9].forEach((x) => add(desk, box(0.05, 0.72, 0.55), woodD, { pos: [x, 0.36, 0], outline: 0.004 }));
@@ -245,7 +254,11 @@
       const lid = new T.Group(); lid.position.set(0, 0.008, 0.12); lid.rotation.x = 0.35; lap.add(lid);
       add(lid, box(0.34, 0.23, 0.012), toon('#cfd3dc'), { pos: [0, 0.115, 0], outline: 0.003 });
       add(lid, new T.CircleGeometry(0.025, 20), toon('#e0574f'), { pos: [0, 0.12, 0.007], outline: 0 });
-      this.screenMat = new T.MeshBasicMaterial({ color: '#a9c8ff' });
+      /* laptop screen: a little browser drawn on a canvas (today's news while reading, the DAW while composing) */
+      this.screenCanvas = document.createElement('canvas'); this.screenCanvas.width = 620; this.screenCanvas.height = 400;
+      this.screenTex = new T.CanvasTexture(this.screenCanvas); this.screenTex.colorSpace = T.SRGBColorSpace; this.screenTex.anisotropy = 4;
+      this.screenMat = new T.MeshBasicMaterial({ color: '#ffffff', map: this.screenTex });
+      this.screenInfo = null; this.screenKey = ''; this.screenNext = 0;
       add(lid, new T.PlaneGeometry(0.31, 0.2), this.screenMat, { pos: [0, 0.115, -0.007], rot: [0, Math.PI, 0], outline: 0 });
       /* lamp */
       const lampG = new T.Group(); lampG.position.set(-0.75, 0.77, 0.05); desk.add(lampG);
@@ -315,7 +328,24 @@
       const bb = sph(0.55, 36, 24); const bp = bb.attributes.position;
       for (let i = 0; i < bp.count; i++) { const y = bp.getY(i), z = bp.getZ(i); let ny = y * 0.55; if (z < 0) ny += (-z / 0.55) * 0.28 * Math.max(0, (y + 0.3) / 0.85); bp.setY(i, Math.max(ny, -0.2)); }
       bb.computeVertexNormals();
-      add(nk, bb, toon('#e8a07a', { levels: [175, 225, 255] }), { pos: [0, 0.22, -0.05], outline: 0.006 });
+      /* lap blanket: draped over her legs while she reads on the beanbag */
+      {
+        const bc = document.createElement('canvas'); bc.width = bc.height = 128; const bx = bc.getContext('2d');
+        bx.fillStyle = '#cfdcf3'; bx.fillRect(0, 0, 128, 128);
+        bx.fillStyle = 'rgba(255,255,255,0.55)'; for (let i = 0; i < 128; i += 32) { bx.fillRect(i, 0, 12, 128); bx.fillRect(0, i, 128, 12); }
+        bx.fillStyle = 'rgba(120,140,190,0.35)'; for (let i = 16; i < 128; i += 32) { bx.fillRect(i, 0, 3, 128); bx.fillRect(0, i, 128, 3); }
+        const bt = new T.CanvasTexture(bc); bt.colorSpace = T.SRGBColorSpace; bt.wrapS = bt.wrapT = T.RepeatWrapping; bt.repeat.set(2, 2);
+        const g = new T.PlaneGeometry(1, 1, 16, 12); const gp = g.attributes.position;
+        for (let i = 0; i < gp.count; i++) {
+          const u = gp.getX(i) + 0.5, v = gp.getY(i) + 0.5; /* v: 0 = at her waist, 1 = over the knees and down */
+          const drop = Math.max(0, v - 0.55) * 1.1 + Math.pow(Math.abs(u - 0.5) * 2, 3) * 0.18;
+          gp.setXYZ(i, (u - 0.5), -drop, v * 0.9 + Math.sin(u * 9 + v * 4) * 0.012);
+        }
+        g.computeVertexNormals();
+        this.lapBlanket = add(s, g, toon('#ffffff', { map: bt, side: T.DoubleSide, levels: [170, 225, 255] }), { outline: 0.004 });
+        this.lapBlanket.visible = false;
+      }
+      this.beanbag = add(nk, bb, toon('#e8a07a', { levels: [175, 225, 255] }), { pos: [0, 0.22, -0.05], outline: 0.006 });
       add(nk, new T.CapsuleGeometry(0.1, 0.22, 6, 12), toon('#c9d8f2'), { pos: [0.32, 0.42, -0.32], rot: [0, -0.5, Math.PI / 2 - 0.3], outline: 0.004 });
       /* rug */
       const rug = new T.Mesh(new T.CircleGeometry(1.0, 48), toon('#e7d4c4', { levels: [200, 240, 255] }));
@@ -429,21 +459,66 @@
       this.fitFurniture();
       return c;
     }
+    /* fine fit from the real pose: desk top just under her typing hands and elbows (so forearms rest
+       on it instead of sinking in), keyboard under her hands; on the beanbag, hips sit on its surface */
+    fitToPose(dt, pet, pose) {
+      if (this.lapBlanket && (pet.spot !== 'nook' || pet.target || !pet.seated)) this.lapBlanket.visible = false;
+      if (!this.fit || !this.char.bodyWorld || pet.target || !pet.seated) return;
+      const k = Math.min(1, dt * 3);
+      if (pet.spot === 'desk' && (pose.act === 'type' || pose.act === 'think' || pose.act === 'idle')) {
+        const b = this.char.bodyWorld(); if (!b.handL || !b.elbowL) return;
+        if (pose.act === 'type') {
+          const handY = Math.min(b.handL.y, b.handR.y), elbowY = Math.min(b.elbowL.y, b.elbowR.y);
+          /* top must clear her thighs (knees go under it) and stay just below hands/elbows */
+          const thighTop = (b.hips ? b.hips.y : this.fit.seatHip) + this.fit.height * 0.07;
+          const want = H.clamp(Math.max(thighTop + 0.07, Math.min(handY - 0.035, elbowY - 0.015)), this.fit.seat + 0.14, this.fit.seat + 0.45);
+          this.fit.deskLive = this.fit.deskLive == null ? want : H.lerp(this.fit.deskLive, want, k);
+          /* slide the desk so the keyboard (desk-local z −0.18) sits under her hands */
+          const hz = (b.handL.z + b.handR.z) / 2;
+          this.fit.deskZ = H.clamp(hz + 0.18, -0.85, -0.4);
+        }
+        if (this.fit.deskLive != null) this.applyDesk(this.fit.deskLive, this.fit.deskZ);
+      }
+      if (pet.spot === 'nook' && this.beanbag) {
+        const b = this.char.bodyWorld(); if (!b.hips) return;
+        if (this.lapBlanket) {
+          const Hc = this.fit.height, hd = this.char.root.rotation.y;
+          this.lapBlanket.visible = true;
+          this.lapBlanket.scale.set(Hc * 0.42, Hc * 0.42, Hc * 0.42);
+          this.lapBlanket.position.set(b.hips.x - Math.sin(hd) * 0.04, b.hips.y + Hc * 0.075, b.hips.z - Math.cos(hd) * 0.04);
+          this.lapBlanket.rotation.set(0, hd, 0);
+        }
+        const rc = new T.Raycaster(new T.Vector3(b.hips.x, 3, b.hips.z), new T.Vector3(0, -1, 0));
+        const hit = rc.intersectObject(this.beanbag, false)[0];
+        if (hit) {
+          const want = hit.point.y + this.fit.height * 0.05;
+          this.fit.lowLive = this.fit.lowLive == null ? want : H.lerp(this.fit.lowLive, want, k);
+        }
+      }
+    }
+    applyDesk(h, z) {
+      this.deskBase.scale.y = h / 0.77;
+      this.deskTop.position.y = h - 0.77;
+      if (z != null) this.desk.position.z = z;
+      const dz = this.desk.position.z;
+      if (this.globeG) { this.globeG.position.y = h; this.globeG.position.z = dz - 0.15; }
+      if (this.steam) { this.steam.position.y = h + 0.13; this.steam.position.z = dz - 0.05; }
+    }
     /* chair, desk and beanbag follow the character's body size (seat ≈ 27 %, desk ≈ 45 % of height) */
     fitFurniture() {
       if (!this.char || !this.deskTop) return;
       const b = new T.Box3().setFromObject(this.char.root);
       const Hc = H.clamp(b.max.y - b.min.y, 0.9, 2.0);
       const seat = H.clamp(Hc * 0.27, 0.3, 0.5), desk = H.clamp(Hc * 0.455, 0.52, 0.8);
-      this.deskBase.scale.y = desk / 0.77;
-      this.deskTop.position.y = desk - 0.77;
-      if (this.globeG) this.globeG.position.y = desk;
-      if (this.steam) this.steam.position.y = desk + 0.13;
+      this.desk.position.z = -0.6;
+      this.applyDesk(desk);
       const cs = H.clamp(Hc / 1.45, 0.75, 1.2);
       this.chair.scale.set(cs, seat / 0.48, cs);
-      const ns = H.clamp(Hc / 1.35, 0.8, 1.25);
-      this.nook.scale.setScalar(ns);
-      this.fit = { height: Hc, seat, desk, seatHip: seat + 0.03, lowHip: 0.36 * ns };
+      const ns = H.clamp(Hc / 1.3, 0.8, 1.3);
+      /* a beanbag for her size: about as wide as she is tall, seat surface near knee height */
+      const surf = Hc * 0.24;
+      this.nook.scale.set(ns, H.clamp(surf / (0.5 * ns), 0.6, 1.2) * ns, ns);
+      this.fit = { height: Hc, seat, desk, seatHip: seat + 0.03, lowHip: surf + Hc * 0.05, deskLive: null, lowLive: null };
     }
 
     /* ---------------- cameras ---------------- */
@@ -547,7 +622,8 @@
       this.moon.material.opacity = H.clamp((0.5 - day) / 0.5) * (1 - gray * 0.7);
       this.cityMat.color.set(H.mix(H.mix('#20233a', '#9aa6bb', day), bc, 0.45)); this.cityMat.emissiveIntensity = H.clamp(0.9 - day) * 0.9;
       this.clouds.forEach((c) => { c.position.x += c.userData.v * dt * (wx && wx.wind ? 1 + wx.wind / 15 : 1); if (c.position.x > 22) c.position.x = -22; c.material.color.set(H.mix(H.mix('#ffffff', '#ffc7a8', sunset), '#3a3f60', 1 - day)); c.material.opacity = 0.55 + gray * 0.4; c.visible = this.clouds.indexOf(c) < 3 + Math.round(gray * 6); });
-      this.screenMat.color.set(H.mix('#7fa2e8', '#cfe2ff', day));
+      this.screenMat.color.set(H.mix('#d9def0', '#ffffff', day));
+      if (this.t > this.screenNext) { this.screenNext = this.t + 1.5; this.drawScreen(); }
       /* precipitation */
       const rain = wx && (wx.sky === 'rain' || wx.sky === 'storm'), snow = wx && wx.sky === 'snow';
       this.precip.visible = !!(rain || snow);
@@ -601,9 +677,11 @@
         r.position.set(pl.X, 0, pl.Z);
         let dh = pl.heading - r.rotation.y; while (dh > Math.PI) dh -= Math.PI * 2; while (dh < -Math.PI) dh += Math.PI * 2;
         r.rotation.y += dh * (1 - Math.exp(-dt * 8));
+        if (pet.spot === 'nook' && pet.seated && !pet.target && this.fit && this.fit.lowLive != null) pl.seatH = this.fit.lowLive;
         const pose = Object.assign({}, pet.pose, { seatH: pl.seatH, lowSeat: pl.low });
         if (pet.spot === 'desk' && pet.seated) this.chair.position.set(pl.X, 0, pl.Z - 0.08);
         this.char.update(dt, pose);
+        this.fitToPose(dt, pet, pose);
       }
       this.updateParticles(dt);
       /* camera easing */
@@ -618,6 +696,65 @@
         this.camTarget.fov = 30;
       }
       this.cam.p.lerp(this.camTarget.p, k); this.cam.t.lerp(this.camTarget.t, k); this.cam.fov += (this.camTarget.fov - this.cam.fov) * k;
+    }
+
+    drawScreen() {
+      const info = this.screenInfo || {};
+      const key = JSON.stringify([info.mode, info.title, (info.headlines || []).length, (info.keywords || []).join(), info.weather, info.step, Math.floor(this.hours * 4)]);
+      if (key === this.screenKey) return;
+      this.screenKey = key;
+      const c = this.screenCanvas, x = c.getContext('2d'), W = c.width, Hh = c.height;
+      const font = (w, px) => `${w} ${px}px "Malgun Gothic", "Segoe UI", sans-serif`;
+      const clip = (s, px, max) => { x.font = font(500, px); let t = String(s || ''); while (t.length > 2 && x.measureText(t).width > max) t = t.slice(0, -2); return t === String(s || '') ? t : t + '…'; };
+      /* window chrome */
+      x.fillStyle = '#eef1f7'; x.fillRect(0, 0, W, Hh);
+      x.fillStyle = '#dfe4ee'; x.fillRect(0, 0, W, 54);
+      ['#ff6058', '#ffbd2e', '#28c840'].forEach((col, i) => { x.fillStyle = col; x.beginPath(); x.arc(20 + i * 20, 17, 6, 0, 7); x.fill(); });
+      const tab = info.mode === 'compose' ? 'HARU Studio' : info.mode === 'paint' ? 'Palette' : 'HARU News';
+      x.fillStyle = '#ffffff'; x.beginPath(); x.roundRect(86, 6, 170, 24, [8, 8, 0, 0]); x.fill();
+      x.fillStyle = '#2f3240'; x.font = font(600, 13); x.fillText(tab, 98, 23);
+      x.fillStyle = '#ffffff'; x.beginPath(); x.roundRect(14, 32, W - 28, 18, 9); x.fill();
+      x.fillStyle = '#6b7079'; x.font = font(400, 11);
+      x.fillText(info.mode === 'compose' ? 'haru.studio/compose' : info.mode === 'paint' ? 'haru.art/palette' : 'news.haru/today', 26, 45);
+      const y0 = 64;
+      if (info.mode === 'compose') {
+        /* tiny DAW: track lanes with blocks + playhead */
+        x.fillStyle = '#1d2030'; x.fillRect(0, y0, W, Hh - y0);
+        x.fillStyle = '#9aa3c7'; x.font = font(600, 14); x.fillText(clip(info.title || '새 곡', 14, W - 40), 16, y0 + 24);
+        x.font = font(400, 11); x.fillStyle = '#6f7798'; x.fillText(info.sub || '', 16, y0 + 42);
+        const lanes = ['lead', 'chord', 'bass', 'drum'], cols = ['#ff7aa8', '#7fa2ff', '#7ce0b6', '#ffd36b'];
+        lanes.forEach((ln, i) => {
+          const ly = y0 + 60 + i * 64;
+          x.fillStyle = '#262a3d'; x.fillRect(70, ly, W - 86, 50);
+          x.fillStyle = '#9aa3c7'; x.font = font(600, 11); x.fillText(ln.toUpperCase(), 16, ly + 29);
+          const blocks = (info.lanes && info.lanes[i]) || [];
+          blocks.forEach(([a, b, h]) => { x.fillStyle = cols[i]; x.fillRect(70 + a * (W - 86), ly + 6 + (1 - h) * 34, Math.max(2, (b - a) * (W - 86)), 6); });
+        });
+        if (info.step != null) { x.fillStyle = '#ffffff'; x.fillRect(70 + info.step * (W - 86), y0 + 56, 2, 4 * 64); }
+      } else if (info.mode === 'paint') {
+        x.fillStyle = '#ffffff'; x.fillRect(0, y0, W, Hh - y0);
+        x.fillStyle = '#2f3240'; x.font = font(700, 18); x.fillText('오늘의 팔레트', 18, y0 + 32);
+        (info.palette || []).forEach((col, i) => { x.fillStyle = col; x.beginPath(); x.roundRect(18 + i * 96, y0 + 52, 84, 84, 10); x.fill(); x.fillStyle = '#6b7079'; x.font = font(400, 11); x.fillText(col, 22 + i * 96, y0 + 152); });
+        x.fillStyle = '#6b7079'; x.font = font(500, 13); x.fillText(clip(info.sub || '', 13, W - 40), 18, y0 + 190);
+      } else {
+        /* news front page */
+        x.fillStyle = '#ffffff'; x.fillRect(0, y0, W, Hh - y0);
+        x.fillStyle = '#2f45ff'; x.font = font(800, 20); x.fillText('오늘의 세상', 18, y0 + 32);
+        x.fillStyle = '#6b7079'; x.font = font(400, 12); x.fillText(info.date || '', 150, y0 + 30);
+        if (info.weather) { x.textAlign = 'right'; x.fillStyle = '#2f3240'; x.font = font(600, 13); x.fillText(info.weather, W - 18, y0 + 30); x.textAlign = 'left'; }
+        let kx = 18;
+        (info.keywords || []).slice(0, 6).forEach((k) => { x.font = font(600, 12); const w = x.measureText('#' + k).width + 16; if (kx + w > W - 18) return; x.fillStyle = '#eceaf9'; x.beginPath(); x.roundRect(kx, y0 + 44, w, 22, 11); x.fill(); x.fillStyle = '#2f45ff'; x.fillText('#' + k, kx + 8, y0 + 59); kx += w + 6; });
+        const hs = info.headlines || [];
+        if (!hs.length) { x.fillStyle = '#9aa0aa'; x.font = font(500, 14); x.fillText('오늘 소식은 작업을 시작하면 모아올게요.', 18, y0 + 110); }
+        hs.slice(0, 5).forEach((h, i) => {
+          const hy = y0 + 92 + i * 52;
+          x.fillStyle = ['#ffd9c2', '#d6e4ff', '#d8f2e3', '#f5e1ff', '#fff0bf'][i]; x.fillRect(18, hy - 14, 54, 40);
+          x.fillStyle = '#16181d'; x.fillText('', 0, 0);
+          x.fillStyle = '#16181d'; x.font = font(600, 14); x.fillText(clip(h.title, 14, W - 110), 84, hy + 2);
+          x.fillStyle = '#8a8f98'; x.font = font(400, 11); x.fillText(h.source || '', 84, hy + 20);
+        });
+      }
+      this.screenTex.needsUpdate = true;
     }
 
     drawNeon() {

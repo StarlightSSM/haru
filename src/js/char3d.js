@@ -437,14 +437,16 @@
       if (seated) {
         Q.hipY = p.seatH || 0.5;
         Q.thighL = [-1.5, 0, 0.08]; Q.thighR = [-1.5, 0, -0.08]; Q.kneeL = [1.45, 0, 0]; Q.kneeR = [1.45, 0, 0]; Q.footL = [0.05, 0, 0]; Q.footR = [0.05, 0, 0];
-        if (p.lowSeat) { Q.thighL = [-1.25, 0.25, 0.25]; Q.thighR = [-1.25, -0.25, -0.25]; Q.kneeL = [1.1, 0, 0]; Q.kneeR = [1.1, 0, 0]; }
+        /* beanbag: knees together, both legs folded to one side (side-sit) instead of spread apart */
+        if (p.lowSeat) { Q.thighL = [-1.35, 0.42, -0.04]; Q.thighR = [-1.3, 0.42, 0.06]; Q.kneeL = [1.95, 0, 0]; Q.kneeR = [2.0, 0, 0]; Q.footL = [0.3, 0, 0]; Q.footR = [0.3, 0, 0]; }
       }
       switch (act) {
         case 'type': {
           Q.spine[0] = 0.12; Q.head[0] = 0.22 + Math.sin(t * 1.3) * 0.04;
           const a = Math.sin(t * 17) > 0 ? 0.06 : 0, b = Math.sin(t * 17 + 1.7) > 0 ? 0.06 : 0;
-          Q.shoulderL = [-0.55 - a, 0, 0.18]; Q.elbowL = [-1.05, 0, 0]; Q.handL = [0.3, 0, 0];
-          Q.shoulderR = [-0.55 - b, 0, -0.18]; Q.elbowR = [-1.05, 0, 0]; Q.handR = [0.3, 0, 0];
+          /* upper arms forward, forearms raised to the keyboard (desk height is fitted to this pose) */
+          Q.shoulderL = [-0.72 - a, 0, 0.16]; Q.elbowL = [-1.25, 0, 0]; Q.handL = [0.35, 0, 0];
+          Q.shoulderR = [-0.72 - b, 0, -0.16]; Q.elbowR = [-1.25, 0, 0]; Q.handR = [0.35, 0, 0];
           break;
         }
         case 'paint': {
@@ -524,6 +526,11 @@
     }
 
     headWorld(v) { this.j.head.updateWorldMatrix(true, false); return this.j.head.localToWorld(v.set(0, 0.32, 0)); }
+    /* world positions used to fit furniture to the actual pose */
+    bodyWorld() {
+      const w = (n, y = 0) => { const g = this.j[n]; if (!g) return null; g.updateWorldMatrix(true, false); return g.localToWorld(new T.Vector3(0, y, 0)); };
+      return { handL: w('handL', -0.06), handR: w('handR', -0.06), elbowL: w('elbowL'), elbowR: w('elbowR'), hips: w('hips') };
+    }
   }
   H.Character3D = Character3D;
 
@@ -631,6 +638,12 @@
       head.add(g); this.acc = g;
     }
     headWorld(v) { const h = this.b('head'); h.updateWorldMatrix(true, false); return h.localToWorld(v.set(0, 0.25, 0)); }
+    bodyWorld() {
+      /* raw (posed) bones — the normalized ones are copied onto these after vrm.update */
+      const hb = this.vrm.humanoid;
+      const w = (n) => { const b = hb.getRawBoneNode ? hb.getRawBoneNode(n) : this.b(n); if (!b) return null; b.updateWorldMatrix(true, false); return b.getWorldPosition(new T.Vector3()); };
+      return { handL: w('leftHand'), handR: w('rightHand'), elbowL: w('leftLowerArm'), elbowR: w('rightLowerArm'), hips: w('hips') };
+    }
   }
   H.VrmCharacter = VrmCharacter;
 

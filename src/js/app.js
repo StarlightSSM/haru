@@ -111,6 +111,7 @@
     if (c.time != null) app.debugHours = c.time;
     if (c.noAuto) app.settings.general.autoCreate = false;
     if (c.window != null) toggleWindow(c.window);
+    if (c.model) { app.settings.character.model = c.model; app.applyCharacter(); }
     if (c.items) { app.state.items = c.items.split(','); applyItems(); }
     if (c.act) { const map = { type: ['desk', 'type', 'desk'], paint: ['easel', 'paint', 'easel'], read: ['nook', 'read', 'nook'] }[c.act]; if (map) { app.holdIdleUntil = performance.now() + 60000; app.pet.goTo(map[0], map[1]); setCam(map[2]); } }
     if (c.weather) app.room.weather = Object.assign({ temp: 3, ko: c.weather }, H.describeWeather({ clear: 0, rain: 61, snow: 71, cloudy: 3, storm: 95 }[c.weather] ?? 0));
@@ -252,6 +253,27 @@
     if (app.pet.spot !== 'window' && !app.creation.active) app.pet.flash('stretch', 1.4, 'happy');
   }
   app.toggleWindow = toggleWindow;
+
+  /* what's on the laptop: news (default), the song being written, or today's palette */
+  function updateLaptop() {
+    if (!app.room || !app.room.is3D) return;
+    const cr = app.creation, w = cr.world || app.lastWorld;
+    const ph = cr.state === 'running' && cr.phaseInfo ? cr.phaseInfo.ph.id : null;
+    const info = { mode: 'news', date: H.dateKey(), keywords: w ? w.keywords.slice(0, 6).map((k) => k.w) : [], headlines: w ? w.headlines.slice(0, 5) : [],
+      weather: app.room.weather ? `${app.room.weather.ko || ''} ${Math.round(app.room.weather.temp ?? 0)}°` : '' };
+    if (ph === 'compose' && cr.song) {
+      const s = cr.song, T = s.totalSteps || 1, rev = cr.reveal ?? 1;
+      const spread = (arr, max) => (arr.length <= max ? arr : arr.filter((_, i) => i % Math.ceil(arr.length / max) === 0));
+      const lane = (pred) => spread(s.notes.filter((n) => pred(n) && (n.rev ?? 0) <= rev), 240).map((n) => [n.s / T, (n.s + n.d) / T, H.clamp((n.p - 36) / 50)]);
+      info.mode = 'compose'; info.title = s.title; info.sub = `${s.genreKo} · ${s.keyName} ${s.scaleKo} · ${s.bpm} BPM${s.styleKo ? ' · ' + s.styleKo : ''}`;
+      info.lanes = [lane((n) => n.t === 'lead' || n.t === 'lead2'), lane((n) => n.t === 'chord' || n.t === 'pad' || n.t === 'arp'), lane((n) => n.t === 'bass'), spread(s.drums.filter((d) => (d.rev ?? 0) <= rev), 300).map((d) => [d.s / T, (d.s + 1) / T, 0.5])];
+      const ps = app.audio.playStep; info.step = ps >= 0 ? (ps % T) / T : null;
+    } else if (ph === 'paint' && cr.artPlan) {
+      const P = cr.artPlan.palette; info.mode = 'paint'; info.palette = [P.main, P.second, P.accent, P.deep, P.soft, P.paper];
+      info.sub = `${(H.ART_STYLES.find((a) => a.id === cr.artPlan.style) || {}).ko || ''}${cr.artPlan.splashes && cr.artPlan.splashes.length ? ' · 네가 쏟은 색 ' + cr.artPlan.splashes.length + '개 섞는 중' : ''}`;
+    }
+    app.room.screenInfo = info;
+  }
 
   function applyItems() {
     const owned = new Set(app.state.items || []);
@@ -647,6 +669,7 @@
     H.on('world:source', () => { if (app.view === 'world') renderSources(); });
     H.on('world:ready', (w) => { app.lastWorld = w; app.room.weather = w.weather || app.room.weather; app.orbit.setWorld(w); app.orbitBorn = performance.now(); applyAmbience(); renderWorld(); renderHud(); });
     H.on('creation:planned', () => { renderSongInfo(); buildPads(); renderHud(); });
+    setInterval(updateLaptop, 1500); setTimeout(updateLaptop, 1200);
     H.on('creation:phase', () => { renderHud(); renderRingActions(); });
     H.on('creation:start', () => { renderHud(); renderRingActions(); closeFinal(); });
     H.on('creation:cancel', () => { renderHud(); renderRingActions(); });

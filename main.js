@@ -375,17 +375,23 @@ async function runShots() {
   if (plan === 'script') {
     /* dev: run HARU_SCRIPT (an async function body) inside the app, print what it returns */
     const body = fs.readFileSync(process.env.HARU_SCRIPT, 'utf8');
-    try { const r = await mainWin.webContents.executeJavaScript(`(async () => { ${body} })()`); console.log('[script]', JSON.stringify(r, null, 1)); } catch (err) { console.log('[script] ERROR', err.message); }
+    try { const r = await mainWin.webContents.executeJavaScript(`(async () => { ${body} })()`); if (process.env.HARU_SCRIPT_OUT) fs.writeFileSync(process.env.HARU_SCRIPT_OUT, JSON.stringify(r)); console.log('[script]', JSON.stringify(r, null, 1)); } catch (err) { console.log('[script] ERROR', err.message); }
     quitting = true; app.quit();
   } else if (plan === 'review') {
-    /* dev: furniture fit, window, frames */
-    send('cmd', { time: 14 }); send('cmd', { noAuto: true });
-    send('cmd', { act: 'type' }); await wait(11000); await cap('r1_type_desk');
-    send('cmd', { cam: 'shoulder' }); await wait(3000); await cap('r2_type_shoulder');
-    send('cmd', { cam: 'wide' }); await wait(3000); await cap('r3_type_wide');
-    send('cmd', { act: 'read' }); await wait(11000); await cap('r4_read_nook');
-    send('cmd', { window: true }); send('cmd', { cam: 'wide' }); await wait(3500); await cap('r5_window_open');
-    send('cmd', { cam: 'window' }); await wait(3000); await cap('r6_window_cam');
+    /* dev: furniture fit per model, laptop screen, beanbag */
+    send('cmd', { time: 20 }); send('cmd', { noAuto: true });
+    for (const m of (process.env.HARU_MODELS || 'vivi,shibu').split(',')) {
+      send('cmd', { model: m }); await wait(3500);
+      if (process.env.HARU_REVIEW !== 'nook') {
+        send('cmd', { act: 'type' }); await wait(12000);
+        send('cmd', { cam: 'shoulder' }); await wait(3500); await cap(`r_${m}_1_shoulder`);
+        send('cmd', { cam: 'desk' }); await wait(3500); await cap(`r_${m}_2_desk`);
+        send('cmd', { orbit: [260, 40] }); await wait(2500); await cap(`r_${m}_3_side`);
+      }
+      send('cmd', { act: 'read' }); await wait(12000); await cap(`r_${m}_4_nook`);
+      send('cmd', { orbit: [-420, -30] }); await wait(2500); await cap(`r_${m}_4b_nook_low`);
+      send('cmd', { cam: 'wide' }); await wait(3000); await cap(`r_${m}_5_wide`);
+    }
     quitting = true; app.quit();
   } else if (plan === 'readme') {
     /* README walkthrough: first run → idle room → a full day of work → every tab → mini avatar */

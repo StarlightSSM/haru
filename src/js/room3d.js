@@ -468,14 +468,9 @@
       if (pet.spot === 'desk' && (pose.act === 'type' || pose.act === 'think' || pose.act === 'idle')) {
         const b = this.char.bodyWorld(); if (!b.handL || !b.elbowL) return;
         if (pose.act === 'type') {
-          const handY = Math.min(b.handL.y, b.handR.y), elbowY = Math.min(b.elbowL.y, b.elbowR.y);
-          /* top must clear her thighs (knees go under it) and stay just below hands/elbows */
-          const thighTop = (b.hips ? b.hips.y : this.fit.seatHip) + this.fit.height * 0.07;
-          const want = H.clamp(Math.max(thighTop + 0.07, Math.min(handY - 0.035, elbowY - 0.015)), this.fit.seat + 0.14, this.fit.seat + 0.45);
-          this.fit.deskLive = this.fit.deskLive == null ? want : H.lerp(this.fit.deskLive, want, k);
-          /* slide the desk so the keyboard (desk-local z −0.18) sits under her hands */
-          const hz = (b.handL.z + b.handR.z) / 2;
-          this.fit.deskZ = H.clamp(hz + 0.18, -0.85, -0.4);
+          const d = this.deskFromBody(b);
+          this.fit.deskLive = this.fit.deskLive == null ? d.h : H.lerp(this.fit.deskLive, d.h, k);
+          this.fit.deskZ = d.z;
         }
         if (this.fit.deskLive != null) this.applyDesk(this.fit.deskLive, this.fit.deskZ);
       }
@@ -488,13 +483,44 @@
           this.lapBlanket.position.set(b.hips.x - Math.sin(hd) * 0.04, b.hips.y + Hc * 0.075, b.hips.z - Math.cos(hd) * 0.04);
           this.lapBlanket.rotation.set(0, hd, 0);
         }
-        const rc = new T.Raycaster(new T.Vector3(b.hips.x, 3, b.hips.z), new T.Vector3(0, -1, 0));
-        const hit = rc.intersectObject(this.beanbag, false)[0];
-        if (hit) {
-          const want = hit.point.y + this.fit.height * 0.05;
-          this.fit.lowLive = this.fit.lowLive == null ? want : H.lerp(this.fit.lowLive, want, k);
-        }
+        const want = this.beanbagSeat(b.hips);
+        if (want != null) this.fit.lowLive = this.fit.lowLive == null ? want : H.lerp(this.fit.lowLive, want, k);
       }
+    }
+    /* desk top just under typing hands/elbows but above her thighs; keyboard (desk-local z −0.18) under her hands */
+    deskFromBody(b) {
+      const handY = Math.min(b.handL.y, b.handR.y), elbowY = Math.min(b.elbowL.y, b.elbowR.y);
+      const thighTop = (b.hips ? b.hips.y : this.fit.seatHip) + this.fit.height * 0.07;
+      const h = H.clamp(Math.max(thighTop + 0.07, Math.min(handY - 0.035, elbowY - 0.015)), this.fit.seat + 0.14, this.fit.seat + 0.45);
+      const z = H.clamp((b.handL.z + b.handR.z) / 2 + 0.18, -0.85, -0.4);
+      return { h, z };
+    }
+    /* hip height that puts her ON the beanbag surface under her hips (not inside it) */
+    beanbagSeat(hips) {
+      this.nook.updateMatrixWorld(true);
+      const hit = new T.Raycaster(new T.Vector3(hips.x, 3, hips.z), new T.Vector3(0, -1, 0)).intersectObject(this.beanbag, false)[0];
+      return hit ? hit.point.y + this.fit.height * 0.05 : null;
+    }
+    /* run the sitting poses once, invisibly, right after a model is set — so the desk and beanbag
+       are already right before she ever sits down (no sinking for the first second) */
+    calibrateFit() {
+      const c = this.char; if (!c || !c.bodyWorld || !H.SPOTS) return;
+      const r = c.root, saved = { p: r.position.clone(), ry: r.rotation.y, t: c.t };
+      const pose = (act, extra) => Object.assign({ t: 0, act, emo: 'neutral', seated: true, blink: 1, look: { x: 0, y: 1 }, talk: 0 }, extra);
+      const settle = (spot, p) => {
+        const sp = H.SPOTS[spot]; const pl = this.petPlacement({ x: sp.x, y: sp.y, spot, seated: true });
+        r.position.set(pl.X, 0, pl.Z); r.rotation.y = pl.heading;
+        for (let i = 0; i < 30; i++) c.update(0.1, p);
+        r.updateMatrixWorld(true);
+        return c.bodyWorld();
+      };
+      try {
+        const bd = settle('desk', pose('type', { seatH: this.fit.seatHip }));
+        if (bd.handL && bd.elbowL) { const d = this.deskFromBody(bd); this.fit.deskLive = d.h; this.fit.deskZ = d.z; this.applyDesk(d.h, d.z); }
+        const bn = settle('nook', pose('read', { seatH: this.fit.lowHip, lowSeat: true }));
+        if (bn.hips) { const y = this.beanbagSeat(bn.hips); if (y != null) this.fit.lowLive = y; }
+      } catch (e) { console.warn('fit calibration', e); }
+      r.position.copy(saved.p); r.rotation.y = saved.ry; c.t = saved.t;
     }
     applyDesk(h, z) {
       this.deskBase.scale.y = h / 0.77;
@@ -519,6 +545,7 @@
       const surf = Hc * 0.24;
       this.nook.scale.set(ns, H.clamp(surf / (0.5 * ns), 0.6, 1.2) * ns, ns);
       this.fit = { height: Hc, seat, desk, seatHip: seat + 0.03, lowHip: surf + Hc * 0.05, deskLive: null, lowLive: null };
+      this.calibrateFit();
     }
 
     /* ---------------- cameras ---------------- */
